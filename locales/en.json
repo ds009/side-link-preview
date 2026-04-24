@@ -1,0 +1,41 @@
+{
+  "app_name": "Side Link Preview",
+  "header_subtitle": "Changes are saved automatically. Reload the page for them to take effect.",
+
+  "section_language": "Language",
+  "language_hint": "Language of the settings page and side panel UI.",
+
+  "section_scope": "Scope",
+  "scope_hint_html": "One domain per line. Subdomains are matched automatically — entering <code>example.com</code> also matches <code>www.example.com</code> and <code>blog.example.com</code>. The <code>*</code> wildcard is also supported (e.g. <code>*keyword*</code> matches any domain containing <code>keyword</code>).",
+  "mode_blacklist": "Blacklist (enabled on sites not in the list)",
+  "mode_whitelist": "Whitelist (enabled only on sites in the list)",
+  "scope_placeholder": "example.com\n*keyword*",
+
+  "section_trigger": "Trigger",
+  "trigger_hint": "Click: open the link in the side panel on click. Hover: automatic preview after hovering longer than the delay.",
+  "trigger_click": "Click to open",
+  "trigger_hover": "Hover to open",
+  "hover_delay_label": "Hover delay",
+  "hover_delay_unit": "ms",
+  "hover_note": "Hover preview requires the side panel to already be open. The first time, click the toolbar side-panel icon or the extension icon to open it.",
+
+  "section_link_scope": "Link scope",
+  "link_scope_hint_html": "Whether to capture only <code>target=\"_blank\"</code> new-tab links, or every link.",
+  "link_scope_blank": "Only new-tab links (_blank)",
+  "link_scope_all": "All links",
+
+  "saved": "Saved",
+  "save_failed": "Save failed: ",
+  "reset_btn": "Reset",
+  "reset_btn_title": "Restore default settings",
+  "reset_confirm": "Reset to defaults? The domain list will be cleared.",
+
+  "addr_placeholder": "URL",
+  "btn_go": "Go",
+  "btn_go_title": "Load",
+  "btn_pop_title": "Open in new tab",
+  "btn_settings_title": "Settings",
+
+  "sidepanel_empty": "Click any link in the page to preview it here.",
+  "sidepanel_blocked_html": "This site may disallow iframe embedding (<code>X-Frame-Options</code> / <code>CSP</code>).<br/><br/>Click the <strong>↗</strong> button to open it in a new tab."
+}

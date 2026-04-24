@@ -1,0 +1,41 @@
+{
+  "app_name": "Side Link Preview",
+  "header_subtitle": "Les modifications sont enregistrées automatiquement. Rechargez la page pour qu'elles prennent effet.",
+
+  "section_language": "Langue",
+  "language_hint": "Langue de la page de paramètres et de l'interface du panneau latéral.",
+
+  "section_scope": "Portée",
+  "scope_hint_html": "Un domaine par ligne. Les sous-domaines sont reconnus automatiquement — saisir <code>example.com</code> correspond aussi à <code>www.example.com</code> et <code>blog.example.com</code>. Le caractère générique <code>*</code> est pris en charge (ex. <code>*motclé*</code> correspond à tout domaine contenant <code>motclé</code>).",
+  "mode_blacklist": "Liste noire (activé sauf pour les sites de la liste)",
+  "mode_whitelist": "Liste blanche (activé uniquement sur les sites de la liste)",
+  "scope_placeholder": "example.com\n*motclé*",
+
+  "section_trigger": "Déclencheur",
+  "trigger_hint": "Clic : ouvrir le lien dans le panneau latéral au clic. Survol : aperçu automatique après avoir survolé plus longtemps que le délai.",
+  "trigger_click": "Ouvrir au clic",
+  "trigger_hover": "Ouvrir au survol",
+  "hover_delay_label": "Délai de survol",
+  "hover_delay_unit": "ms",
+  "hover_note": "L'aperçu au survol nécessite que le panneau latéral soit déjà ouvert. La première fois, cliquez sur l'icône du panneau latéral ou sur l'icône de l'extension pour l'ouvrir.",
+
+  "section_link_scope": "Portée des liens",
+  "link_scope_hint_html": "Intercepter uniquement les liens <code>target=\"_blank\"</code> (nouvel onglet), ou tous les liens.",
+  "link_scope_blank": "Uniquement les liens en nouvel onglet (_blank)",
+  "link_scope_all": "Tous les liens",
+
+  "saved": "Enregistré",
+  "save_failed": "Échec de l'enregistrement : ",
+  "reset_btn": "Réinitialiser",
+  "reset_btn_title": "Restaurer les paramètres par défaut",
+  "reset_confirm": "Rétablir les paramètres par défaut ? La liste de domaines sera effacée.",
+
+  "addr_placeholder": "URL",
+  "btn_go": "Aller",
+  "btn_go_title": "Charger",
+  "btn_pop_title": "Ouvrir dans un nouvel onglet",
+  "btn_settings_title": "Paramètres",
+
+  "sidepanel_empty": "Cliquez sur un lien de la page pour l'aperçu ici.",
+  "sidepanel_blocked_html": "Ce site refuse peut-être l'intégration en iframe (<code>X-Frame-Options</code> / <code>CSP</code>).<br/><br/>Cliquez sur le bouton <strong>↗</strong> pour l'ouvrir dans un nouvel onglet."
+}

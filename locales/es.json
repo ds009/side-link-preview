@@ -1,0 +1,41 @@
+{
+  "app_name": "Side Link Preview",
+  "header_subtitle": "Los cambios se guardan automáticamente. Recarga la página para que surtan efecto.",
+
+  "section_language": "Idioma",
+  "language_hint": "Idioma de la página de ajustes y de la interfaz del panel lateral.",
+
+  "section_scope": "Ámbito",
+  "scope_hint_html": "Un dominio por línea. Los subdominios coinciden automáticamente — <code>example.com</code> también coincide con <code>www.example.com</code> y <code>blog.example.com</code>. Se admite el comodín <code>*</code> (p. ej. <code>*palabra*</code> coincide con cualquier dominio que contenga <code>palabra</code>).",
+  "mode_blacklist": "Lista negra (activa salvo en los sitios de la lista)",
+  "mode_whitelist": "Lista blanca (activa solo en los sitios de la lista)",
+  "scope_placeholder": "example.com\n*palabra*",
+
+  "section_trigger": "Activación",
+  "trigger_hint": "Clic: abrir el enlace en el panel lateral al hacer clic. Hover: vista previa automática al pasar el ratón más tiempo que el retardo configurado.",
+  "trigger_click": "Abrir con clic",
+  "trigger_hover": "Abrir al pasar el ratón",
+  "hover_delay_label": "Retardo de hover",
+  "hover_delay_unit": "ms",
+  "hover_note": "La vista previa al pasar el ratón requiere que el panel lateral ya esté abierto. La primera vez, haz clic en el icono del panel lateral o en el icono de la extensión para abrirlo.",
+
+  "section_link_scope": "Alcance de enlaces",
+  "link_scope_hint_html": "Interceptar solo los enlaces <code>target=\"_blank\"</code> (nueva pestaña) o todos los enlaces.",
+  "link_scope_blank": "Solo enlaces de nueva pestaña (_blank)",
+  "link_scope_all": "Todos los enlaces",
+
+  "saved": "Guardado",
+  "save_failed": "Error al guardar: ",
+  "reset_btn": "Restablecer",
+  "reset_btn_title": "Restaurar la configuración predeterminada",
+  "reset_confirm": "¿Restablecer valores predeterminados? La lista de dominios se borrará.",
+
+  "addr_placeholder": "URL",
+  "btn_go": "Ir",
+  "btn_go_title": "Cargar",
+  "btn_pop_title": "Abrir en una nueva pestaña",
+  "btn_settings_title": "Ajustes",
+
+  "sidepanel_empty": "Haz clic en cualquier enlace de la página para verlo aquí.",
+  "sidepanel_blocked_html": "Este sitio puede no permitir la inserción en iframe (<code>X-Frame-Options</code> / <code>CSP</code>).<br/><br/>Haz clic en el botón <strong>↗</strong> para abrirlo en una nueva pestaña."
+}

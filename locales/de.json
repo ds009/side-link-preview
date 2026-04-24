@@ -1,0 +1,41 @@
+{
+  "app_name": "Side Link Preview",
+  "header_subtitle": "Änderungen werden automatisch gespeichert. Lade die Seite neu, damit sie wirksam werden.",
+
+  "section_language": "Sprache",
+  "language_hint": "Sprache der Einstellungsseite und der Seitenleiste.",
+
+  "section_scope": "Geltungsbereich",
+  "scope_hint_html": "Eine Domain pro Zeile. Subdomains werden automatisch erkannt — <code>example.com</code> stimmt auch mit <code>www.example.com</code> und <code>blog.example.com</code> überein. Der Platzhalter <code>*</code> wird unterstützt (z. B. <code>*begriff*</code> passt auf jede Domain, die <code>begriff</code> enthält).",
+  "mode_blacklist": "Schwarzliste (aktiv außer auf Sites in der Liste)",
+  "mode_whitelist": "Weißliste (nur auf Sites in der Liste aktiv)",
+  "scope_placeholder": "example.com\n*begriff*",
+
+  "section_trigger": "Auslöser",
+  "trigger_hint": "Klick: Link beim Klicken in der Seitenleiste öffnen. Hover: automatische Vorschau nach längerem Überfahren als die Verzögerung.",
+  "trigger_click": "Per Klick öffnen",
+  "trigger_hover": "Per Hover öffnen",
+  "hover_delay_label": "Hover-Verzögerung",
+  "hover_delay_unit": "ms",
+  "hover_note": "Die Hover-Vorschau erfordert, dass die Seitenleiste bereits geöffnet ist. Klicke beim ersten Mal auf das Seitenleistensymbol oder das Erweiterungssymbol in der Symbolleiste, um sie zu öffnen.",
+
+  "section_link_scope": "Link-Bereich",
+  "link_scope_hint_html": "Nur <code>target=\"_blank\"</code>-Links (neuer Tab) oder alle Links abfangen.",
+  "link_scope_blank": "Nur Neue-Tab-Links (_blank)",
+  "link_scope_all": "Alle Links",
+
+  "saved": "Gespeichert",
+  "save_failed": "Speichern fehlgeschlagen: ",
+  "reset_btn": "Zurücksetzen",
+  "reset_btn_title": "Standardeinstellungen wiederherstellen",
+  "reset_confirm": "Auf Standardwerte zurücksetzen? Die Domain-Liste wird geleert.",
+
+  "addr_placeholder": "URL",
+  "btn_go": "Los",
+  "btn_go_title": "Laden",
+  "btn_pop_title": "In neuem Tab öffnen",
+  "btn_settings_title": "Einstellungen",
+
+  "sidepanel_empty": "Klicke auf einen Link auf der Seite, um ihn hier als Vorschau zu sehen.",
+  "sidepanel_blocked_html": "Diese Site erlaubt möglicherweise keine Einbettung in einem iframe (<code>X-Frame-Options</code> / <code>CSP</code>).<br/><br/>Klicke auf die Schaltfläche <strong>↗</strong>, um sie in einem neuen Tab zu öffnen."
+}

@@ -1,0 +1,41 @@
+{
+  "app_name": "Side Link Preview",
+  "header_subtitle": "更改会自动保存，刷新页面后生效。",
+
+  "section_language": "语言",
+  "language_hint": "设置页面和侧边栏 UI 使用的语言。",
+
+  "section_scope": "作用范围",
+  "scope_hint_html": "每行一个域名，支持子域名自动匹配（填 <code>example.com</code> 会匹配 <code>www.example.com</code>、<code>blog.example.com</code>）；也支持 <code>*</code> 通配符（如 <code>*keyword*</code> 匹配任何域名中包含 <code>keyword</code> 的站点）。",
+  "mode_blacklist": "黑名单（列表外的站点启用）",
+  "mode_whitelist": "白名单（只在列表中启用）",
+  "scope_placeholder": "example.com\n*keyword*",
+
+  "section_trigger": "触发方式",
+  "trigger_hint": "点击模式：单击链接在侧边栏打开。Hover 模式：鼠标悬停到链接超过延迟时间即预览。",
+  "trigger_click": "点击打开",
+  "trigger_hover": "Hover 打开",
+  "hover_delay_label": "Hover 延迟",
+  "hover_delay_unit": "毫秒",
+  "hover_note": "Hover 预览需要侧边栏已处于打开状态。首次启用请先点击工具栏上的 Side Panel 图标或扩展图标把侧边栏打开。",
+
+  "section_link_scope": "链接范围",
+  "link_scope_hint_html": "是否只接管带 <code>target=\"_blank\"</code> 的新标签页链接，或所有站内外链接。",
+  "link_scope_blank": "仅新标签页链接（_blank）",
+  "link_scope_all": "所有链接",
+
+  "saved": "已保存",
+  "save_failed": "保存失败：",
+  "reset_btn": "恢复默认",
+  "reset_btn_title": "恢复默认设置",
+  "reset_confirm": "恢复默认设置？当前的域名列表会被清空。",
+
+  "addr_placeholder": "网址",
+  "btn_go": "前往",
+  "btn_go_title": "加载",
+  "btn_pop_title": "在新标签页打开",
+  "btn_settings_title": "设置",
+
+  "sidepanel_empty": "点击页面中任意链接即可在此预览。",
+  "sidepanel_blocked_html": "该网站可能禁止在 iframe 中嵌入（<code>X-Frame-Options</code> / <code>CSP</code>）。<br/><br/>请点击 <strong>↗</strong> 在新标签页打开。"
+}

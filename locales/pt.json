@@ -1,0 +1,41 @@
+{
+  "app_name": "Side Link Preview",
+  "header_subtitle": "As alterações são salvas automaticamente. Recarregue a página para que tenham efeito.",
+
+  "section_language": "Idioma",
+  "language_hint": "Idioma da página de configurações e da interface do painel lateral.",
+
+  "section_scope": "Escopo",
+  "scope_hint_html": "Um domínio por linha. Os subdomínios são reconhecidos automaticamente — <code>example.com</code> também corresponde a <code>www.example.com</code> e <code>blog.example.com</code>. O curinga <code>*</code> também é aceito (ex.: <code>*palavra*</code> corresponde a qualquer domínio que contenha <code>palavra</code>).",
+  "mode_blacklist": "Lista negra (ativo exceto nos sites da lista)",
+  "mode_whitelist": "Lista branca (ativo apenas nos sites da lista)",
+  "scope_placeholder": "example.com\n*palavra*",
+
+  "section_trigger": "Disparo",
+  "trigger_hint": "Clique: abrir o link no painel lateral ao clicar. Hover: prévia automática ao passar o mouse por mais tempo que o atraso.",
+  "trigger_click": "Abrir com clique",
+  "trigger_hover": "Abrir ao passar o mouse",
+  "hover_delay_label": "Atraso do hover",
+  "hover_delay_unit": "ms",
+  "hover_note": "A prévia por hover exige que o painel lateral já esteja aberto. Na primeira vez, clique no ícone do painel lateral na barra de ferramentas ou no ícone da extensão para abri-lo.",
+
+  "section_link_scope": "Escopo de links",
+  "link_scope_hint_html": "Interceptar apenas os links <code>target=\"_blank\"</code> (nova aba) ou todos os links.",
+  "link_scope_blank": "Apenas links de nova aba (_blank)",
+  "link_scope_all": "Todos os links",
+
+  "saved": "Salvo",
+  "save_failed": "Falha ao salvar: ",
+  "reset_btn": "Redefinir",
+  "reset_btn_title": "Restaurar configurações padrão",
+  "reset_confirm": "Redefinir para os padrões? A lista de domínios será apagada.",
+
+  "addr_placeholder": "URL",
+  "btn_go": "Ir",
+  "btn_go_title": "Carregar",
+  "btn_pop_title": "Abrir em nova aba",
+  "btn_settings_title": "Configurações",
+
+  "sidepanel_empty": "Clique em qualquer link da página para visualizá-lo aqui.",
+  "sidepanel_blocked_html": "Este site pode não permitir a incorporação em iframe (<code>X-Frame-Options</code> / <code>CSP</code>).<br/><br/>Clique no botão <strong>↗</strong> para abri-lo em uma nova aba."
+}
