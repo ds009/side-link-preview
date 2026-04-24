@@ -18,11 +18,11 @@
   "hover_delay_label": "Hover delay",
   "hover_delay_unit": "ms",
   "hover_note": "Hover preview requires the side panel to already be open. The first time, click the toolbar side-panel icon or the extension icon to open it.",
+  "trigger_click_note_html": "Want a link to <strong>skip</strong> the Side Panel? Hold <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> while clicking — it will open in a new tab as usual. To always skip a whole site, add its domain under <em>Scope</em> above.",
 
   "section_link_scope": "Link scope",
-  "link_scope_hint_html": "Whether to capture only <code>target=\"_blank\"</code> new-tab links, or every link.",
-  "link_scope_blank": "Only new-tab links (_blank)",
-  "link_scope_all": "All links",
+  "link_scope_hint_html": "By default only <code>target=\"_blank\"</code> links (the ones a page asks to open in a new tab) are intercepted. Enable the option below to also send same-tab (non-<code>_blank</code>) links to the side panel.",
+  "link_scope_include_nonblank": "Also open non-_blank links in the side panel",
 
   "saved": "Saved",
   "save_failed": "Save failed: ",
@@ -36,6 +36,15 @@
   "btn_pop_title": "Open in new tab",
   "btn_settings_title": "Settings",
 
-  "sidepanel_empty": "Click any link in the page to preview it here.",
-  "sidepanel_blocked_html": "This site may disallow iframe embedding (<code>X-Frame-Options</code> / <code>CSP</code>).<br/><br/>Click the <strong>↗</strong> button to open it in a new tab."
+  "sidepanel_welcome_title": "You're all set.",
+  "sidepanel_welcome_body": "Click any link on the left and it opens here, side-by-side.",
+  "sidepanel_welcome_bypass_html": "Hold <kbd>⌘</kbd> / <kbd>Ctrl</kbd> while clicking to open in a new tab instead.",
+  "sidepanel_open_settings": "Open settings",
+  "sponsor_cta": "Sponsor on GitHub",
+  "sidepanel_blocked_title": "Can't preview this page",
+  "sidepanel_blocked_body_html": "This site's security policy (<code>X-Frame-Options</code> / <code>CSP</code>) blocks embedding in an iframe.",
+  "sidepanel_blocked_note": "This restriction is set by the site itself — not by the extension.",
+  "sidepanel_blocked_open": "Open in new tab",
+  "sidepanel_blocked_copy": "Copy link",
+  "sidepanel_blocked_copied": "Copied"
 }

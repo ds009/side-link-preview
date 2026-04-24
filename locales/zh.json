@@ -18,11 +18,11 @@
   "hover_delay_label": "Hover 延迟",
   "hover_delay_unit": "毫秒",
   "hover_note": "Hover 预览需要侧边栏已处于打开状态。首次启用请先点击工具栏上的 Side Panel 图标或扩展图标把侧边栏打开。",
+  "trigger_click_note_html": "想让某个链接<strong>不</strong>在侧边栏打开？点击时按住 <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> —— 它就会像平时一样在新标签页打开。若要让整个网站都跳过，请在上方「<em>作用范围</em>」里加上它的域名。",
 
   "section_link_scope": "链接范围",
-  "link_scope_hint_html": "是否只接管带 <code>target=\"_blank\"</code> 的新标签页链接，或所有站内外链接。",
-  "link_scope_blank": "仅新标签页链接（_blank）",
-  "link_scope_all": "所有链接",
+  "link_scope_hint_html": "默认只接管带 <code>target=\"_blank\"</code> 的新标签页链接。开启下面的选项后，普通站内链接（非 <code>_blank</code>）也会在侧边栏中打开。",
+  "link_scope_include_nonblank": "非 _blank 链接也在侧边栏打开",
 
   "saved": "已保存",
   "save_failed": "保存失败：",
@@ -36,6 +36,15 @@
   "btn_pop_title": "在新标签页打开",
   "btn_settings_title": "设置",
 
-  "sidepanel_empty": "点击页面中任意链接即可在此预览。",
-  "sidepanel_blocked_html": "该网站可能禁止在 iframe 中嵌入（<code>X-Frame-Options</code> / <code>CSP</code>）。<br/><br/>请点击 <strong>↗</strong> 在新标签页打开。"
+  "sidepanel_welcome_title": "安装成功。",
+  "sidepanel_welcome_body": "点击左侧页面中的任意链接，即可在此分屏打开。",
+  "sidepanel_welcome_bypass_html": "点击时按住 <kbd>⌘</kbd> / <kbd>Ctrl</kbd> 会恢复为在新标签页中打开。",
+  "sidepanel_open_settings": "打开设置",
+  "sponsor_cta": "在 GitHub 上赞助",
+  "sidepanel_blocked_title": "无法在此预览",
+  "sidepanel_blocked_body_html": "该网站的安全策略（<code>X-Frame-Options</code> / <code>CSP</code>）不允许在 iframe 中嵌入。",
+  "sidepanel_blocked_note": "这是网站自身的限制，不是扩展的问题。",
+  "sidepanel_blocked_open": "在新标签页打开",
+  "sidepanel_blocked_copy": "复制链接",
+  "sidepanel_blocked_copied": "已复制"
 }

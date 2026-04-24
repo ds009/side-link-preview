@@ -5,6 +5,7 @@
     trigger: 'click',
     hoverDelay: 500,
     linkScope: 'blank-only',
+    locale: 'en',
   };
 
   // 判断当前 frame 是否被本扩展（Side Panel）嵌入。
@@ -20,6 +21,17 @@
     } catch (_) {}
     return false;
   })();
+
+  // 向 Side Panel 顶层发"已加载"信号。只要 content.js 能运行到这里，就说明
+  // 目标站没被 XFO/CSP 拦掉，sidepanel.js 可以取消"疑似被拦截"的超时提示。
+  if (inSidePanel) {
+    try {
+      window.top.postMessage(
+        { __slp: 1, type: 'LOADED', url: location.href },
+        '*',
+      );
+    } catch (_) {}
+  }
 
   let settings = { ...DEFAULTS };
 

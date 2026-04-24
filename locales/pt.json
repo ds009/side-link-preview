@@ -18,11 +18,11 @@
   "hover_delay_label": "Atraso do hover",
   "hover_delay_unit": "ms",
   "hover_note": "A prévia por hover exige que o painel lateral já esteja aberto. Na primeira vez, clique no ícone do painel lateral na barra de ferramentas ou no ícone da extensão para abri-lo.",
+  "trigger_click_note_html": "Quer que um link <strong>ignore</strong> o painel lateral? Segure <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> ao clicar — ele abrirá em uma nova aba como de costume. Para sempre ignorar um site inteiro, adicione o domínio em <em>Escopo</em> acima.",
 
   "section_link_scope": "Escopo de links",
-  "link_scope_hint_html": "Interceptar apenas os links <code>target=\"_blank\"</code> (nova aba) ou todos os links.",
-  "link_scope_blank": "Apenas links de nova aba (_blank)",
-  "link_scope_all": "Todos os links",
+  "link_scope_hint_html": "Por padrão, apenas os links <code>target=\"_blank\"</code> (abertura em nova aba) são interceptados. Ative a opção abaixo para enviar também os links internos (não <code>_blank</code>) ao painel lateral.",
+  "link_scope_include_nonblank": "Abrir também os links não-_blank no painel lateral",
 
   "saved": "Salvo",
   "save_failed": "Falha ao salvar: ",
@@ -36,6 +36,15 @@
   "btn_pop_title": "Abrir em nova aba",
   "btn_settings_title": "Configurações",
 
-  "sidepanel_empty": "Clique em qualquer link da página para visualizá-lo aqui.",
-  "sidepanel_blocked_html": "Este site pode não permitir a incorporação em iframe (<code>X-Frame-Options</code> / <code>CSP</code>).<br/><br/>Clique no botão <strong>↗</strong> para abri-lo em uma nova aba."
+  "sidepanel_welcome_title": "Tudo pronto.",
+  "sidepanel_welcome_body": "Clique em qualquer link à esquerda e ele abre aqui, lado a lado.",
+  "sidepanel_welcome_bypass_html": "Segure <kbd>⌘</kbd> / <kbd>Ctrl</kbd> ao clicar para abrir em uma nova aba.",
+  "sidepanel_open_settings": "Abrir configurações",
+  "sponsor_cta": "Patrocinar no GitHub",
+  "sidepanel_blocked_title": "Não é possível visualizar",
+  "sidepanel_blocked_body_html": "A política de segurança do site (<code>X-Frame-Options</code> / <code>CSP</code>) impede a incorporação em iframe.",
+  "sidepanel_blocked_note": "Essa restrição é definida pelo próprio site, não pela extensão.",
+  "sidepanel_blocked_open": "Abrir em nova aba",
+  "sidepanel_blocked_copy": "Copiar link",
+  "sidepanel_blocked_copied": "Copiado"
 }

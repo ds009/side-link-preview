@@ -18,11 +18,11 @@
   "hover_delay_label": "Hover-Verzögerung",
   "hover_delay_unit": "ms",
   "hover_note": "Die Hover-Vorschau erfordert, dass die Seitenleiste bereits geöffnet ist. Klicke beim ersten Mal auf das Seitenleistensymbol oder das Erweiterungssymbol in der Symbolleiste, um sie zu öffnen.",
+  "trigger_click_note_html": "Soll ein Link die Seitenleiste <strong>umgehen</strong>? Halte beim Klicken <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> gedrückt — er öffnet sich wie gewohnt in einem neuen Tab. Um eine ganze Site immer zu überspringen, füge ihre Domain oben unter <em>Geltungsbereich</em> hinzu.",
 
   "section_link_scope": "Link-Bereich",
-  "link_scope_hint_html": "Nur <code>target=\"_blank\"</code>-Links (neuer Tab) oder alle Links abfangen.",
-  "link_scope_blank": "Nur Neue-Tab-Links (_blank)",
-  "link_scope_all": "Alle Links",
+  "link_scope_hint_html": "Standardmäßig werden nur <code>target=\"_blank\"</code>-Links (Öffnen in neuem Tab) abgefangen. Aktiviere die Option unten, um auch normale Seiten-Links (nicht <code>_blank</code>) in die Seitenleiste umzuleiten.",
+  "link_scope_include_nonblank": "Auch Nicht-_blank-Links in der Seitenleiste öffnen",
 
   "saved": "Gespeichert",
   "save_failed": "Speichern fehlgeschlagen: ",
@@ -36,6 +36,15 @@
   "btn_pop_title": "In neuem Tab öffnen",
   "btn_settings_title": "Einstellungen",
 
-  "sidepanel_empty": "Klicke auf einen Link auf der Seite, um ihn hier als Vorschau zu sehen.",
-  "sidepanel_blocked_html": "Diese Site erlaubt möglicherweise keine Einbettung in einem iframe (<code>X-Frame-Options</code> / <code>CSP</code>).<br/><br/>Klicke auf die Schaltfläche <strong>↗</strong>, um sie in einem neuen Tab zu öffnen."
+  "sidepanel_welcome_title": "Alles bereit.",
+  "sidepanel_welcome_body": "Klicke auf einen Link links – er öffnet sich hier, Seite an Seite.",
+  "sidepanel_welcome_bypass_html": "Halte <kbd>⌘</kbd> / <kbd>Ctrl</kbd> beim Klicken gedrückt, um stattdessen in einem neuen Tab zu öffnen.",
+  "sidepanel_open_settings": "Einstellungen öffnen",
+  "sponsor_cta": "Auf GitHub sponsern",
+  "sidepanel_blocked_title": "Vorschau nicht möglich",
+  "sidepanel_blocked_body_html": "Die Sicherheitsrichtlinie dieser Site (<code>X-Frame-Options</code> / <code>CSP</code>) verbietet das Einbetten in einen iframe.",
+  "sidepanel_blocked_note": "Diese Einschränkung setzt die Site selbst — nicht die Erweiterung.",
+  "sidepanel_blocked_open": "In neuem Tab öffnen",
+  "sidepanel_blocked_copy": "Link kopieren",
+  "sidepanel_blocked_copied": "Kopiert"
 }

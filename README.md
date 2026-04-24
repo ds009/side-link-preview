@@ -1,6 +1,10 @@
 # Side Link Preview
 
+[![Sponsor](https://img.shields.io/badge/Sponsor-♥-db2777?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ds009)
+
 Intercepts `target="_blank"` links and opens them in Chrome's Side Panel, giving you a split-view browsing experience similar to Arc / Edge.
+
+> If this extension saves you tab-juggling time, consider [sponsoring on GitHub](https://github.com/sponsors/ds009). It keeps the project maintained and ad‑free.
 
 ## Features
 
@@ -11,7 +15,8 @@ Intercepts `target="_blank"` links and opens them in Chrome's Side Panel, giving
 - **Configurable options page**:
   - Blacklist / whitelist mode (per-domain, subdomain-aware)
   - Trigger: click or hover (with configurable hover delay)
-  - Link scope: `target="_blank"` only, or all links
+  - Optionally also send non-`_blank` (same-tab) links to the side panel
+  - UI language: English (default), 中文, Français, Español, Deutsch, Português
 
 ## Install
 
@@ -26,6 +31,10 @@ Intercepts `target="_blank"` links and opens them in Chrome's Side Panel, giving
 Two ways to open the options page:
 - `chrome://extensions` → Side Link Preview → **Details** → **Extension options**
 - Right-click the extension icon → **Options**
+
+### Language
+
+The options page and side panel UI support: **English** (default), **中文**, **Français**, **Español**, **Deutsch**, **Português**. Pick one from the `Language` dropdown on the options page; the side panel updates automatically.
 
 ### Scope
 
@@ -45,8 +54,9 @@ Domain matching rules:
 
 ### Link scope
 
-- **New-tab links only**: only intercept `<a target="_blank">`
-- **All links**: intercept any `<a>` click (this may change how some sites feel to navigate)
+By default the extension only intercepts `<a target="_blank">` links — the ones a page explicitly asks to open in a new tab. Regular same-tab navigation on the site is untouched.
+
+Enable the **"Also open non-_blank links in the side panel"** toggle to additionally send ordinary `<a>` clicks (without `target="_blank"`) to the side panel. This is more aggressive: most in-page navigation will then be previewed in the panel instead of reloading the current tab. Hold `⌘` / `Ctrl` / `Shift` / `Alt` on a link to bypass the extension at any time.
 
 ## Known limitations
 
@@ -89,3 +99,17 @@ To let sites that set `X-Frame-Options` / `CSP: frame-ancestors` still load insi
 ## Privacy
 
 This extension does not collect, transmit, or track any user data. All user settings live in Chrome's `storage.sync` (synced by your browser profile). See [PRIVACY.md](./PRIVACY.md) for details.
+
+## Sponsor
+
+This extension is free, open source, and has no ads or tracking. If it saves you time day to day, please consider supporting further development:
+
+- 💖 [**Sponsor on GitHub**](https://github.com/sponsors/ds009) — one-time or monthly, any amount helps
+
+Other ways to help without money are equally appreciated:
+
+- ⭐ Star [the repository](https://github.com/ds009/side-link-preview)
+- 🐞 File issues with reproducible steps
+- 📣 Share the Chrome Web Store page with people who live in their browser
+
+Thanks to everyone who sponsors, reports bugs, and spreads the word. 🙏

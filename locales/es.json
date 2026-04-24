@@ -18,11 +18,11 @@
   "hover_delay_label": "Retardo de hover",
   "hover_delay_unit": "ms",
   "hover_note": "La vista previa al pasar el ratón requiere que el panel lateral ya esté abierto. La primera vez, haz clic en el icono del panel lateral o en el icono de la extensión para abrirlo.",
+  "trigger_click_note_html": "¿Quieres que un enlace <strong>se salte</strong> el panel lateral? Mantén <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> al hacer clic — se abrirá en una nueva pestaña como siempre. Para saltar un sitio entero, añade su dominio en <em>Ámbito</em> arriba.",
 
   "section_link_scope": "Alcance de enlaces",
-  "link_scope_hint_html": "Interceptar solo los enlaces <code>target=\"_blank\"</code> (nueva pestaña) o todos los enlaces.",
-  "link_scope_blank": "Solo enlaces de nueva pestaña (_blank)",
-  "link_scope_all": "Todos los enlaces",
+  "link_scope_hint_html": "Por defecto solo se interceptan los enlaces <code>target=\"_blank\"</code> (apertura en nueva pestaña). Activa la opción de abajo para enviar también los enlaces internos (no <code>_blank</code>) al panel lateral.",
+  "link_scope_include_nonblank": "Abrir también los enlaces no-_blank en el panel lateral",
 
   "saved": "Guardado",
   "save_failed": "Error al guardar: ",
@@ -36,6 +36,15 @@
   "btn_pop_title": "Abrir en una nueva pestaña",
   "btn_settings_title": "Ajustes",
 
-  "sidepanel_empty": "Haz clic en cualquier enlace de la página para verlo aquí.",
-  "sidepanel_blocked_html": "Este sitio puede no permitir la inserción en iframe (<code>X-Frame-Options</code> / <code>CSP</code>).<br/><br/>Haz clic en el botón <strong>↗</strong> para abrirlo en una nueva pestaña."
+  "sidepanel_welcome_title": "Todo listo.",
+  "sidepanel_welcome_body": "Haz clic en cualquier enlace de la izquierda y se abrirá aquí, en paralelo.",
+  "sidepanel_welcome_bypass_html": "Mantén <kbd>⌘</kbd> / <kbd>Ctrl</kbd> al hacer clic para abrirlo en una nueva pestaña.",
+  "sidepanel_open_settings": "Abrir ajustes",
+  "sponsor_cta": "Patrocinar en GitHub",
+  "sidepanel_blocked_title": "No se puede previsualizar",
+  "sidepanel_blocked_body_html": "La política de seguridad del sitio (<code>X-Frame-Options</code> / <code>CSP</code>) impide la inserción en un iframe.",
+  "sidepanel_blocked_note": "Esta restricción la establece el propio sitio, no la extensión.",
+  "sidepanel_blocked_open": "Abrir en nueva pestaña",
+  "sidepanel_blocked_copy": "Copiar enlace",
+  "sidepanel_blocked_copied": "Copiado"
 }

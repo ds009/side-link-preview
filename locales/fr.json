@@ -18,11 +18,11 @@
   "hover_delay_label": "Délai de survol",
   "hover_delay_unit": "ms",
   "hover_note": "L'aperçu au survol nécessite que le panneau latéral soit déjà ouvert. La première fois, cliquez sur l'icône du panneau latéral ou sur l'icône de l'extension pour l'ouvrir.",
+  "trigger_click_note_html": "Vous voulez qu'un lien <strong>ignore</strong> le panneau latéral ? Maintenez <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> en cliquant — il s'ouvrira dans un nouvel onglet comme d'habitude. Pour ignorer un site entier, ajoutez son domaine dans <em>Portée</em> ci-dessus.",
 
   "section_link_scope": "Portée des liens",
-  "link_scope_hint_html": "Intercepter uniquement les liens <code>target=\"_blank\"</code> (nouvel onglet), ou tous les liens.",
-  "link_scope_blank": "Uniquement les liens en nouvel onglet (_blank)",
-  "link_scope_all": "Tous les liens",
+  "link_scope_hint_html": "Par défaut, seuls les liens <code>target=\"_blank\"</code> (ouverture en nouvel onglet) sont interceptés. Activez l'option ci-dessous pour aussi envoyer les liens internes (non <code>_blank</code>) vers le panneau latéral.",
+  "link_scope_include_nonblank": "Ouvrir aussi les liens non-_blank dans le panneau latéral",
 
   "saved": "Enregistré",
   "save_failed": "Échec de l'enregistrement : ",
@@ -36,6 +36,15 @@
   "btn_pop_title": "Ouvrir dans un nouvel onglet",
   "btn_settings_title": "Paramètres",
 
-  "sidepanel_empty": "Cliquez sur un lien de la page pour l'aperçu ici.",
-  "sidepanel_blocked_html": "Ce site refuse peut-être l'intégration en iframe (<code>X-Frame-Options</code> / <code>CSP</code>).<br/><br/>Cliquez sur le bouton <strong>↗</strong> pour l'ouvrir dans un nouvel onglet."
+  "sidepanel_welcome_title": "Tout est prêt.",
+  "sidepanel_welcome_body": "Cliquez sur un lien à gauche : il s'ouvre ici, côte à côte.",
+  "sidepanel_welcome_bypass_html": "Maintenez <kbd>⌘</kbd> / <kbd>Ctrl</kbd> en cliquant pour ouvrir dans un nouvel onglet.",
+  "sidepanel_open_settings": "Ouvrir les paramètres",
+  "sponsor_cta": "Sponsoriser sur GitHub",
+  "sidepanel_blocked_title": "Impossible de prévisualiser",
+  "sidepanel_blocked_body_html": "La politique de sécurité de ce site (<code>X-Frame-Options</code> / <code>CSP</code>) interdit l'intégration en iframe.",
+  "sidepanel_blocked_note": "Cette restriction est définie par le site lui-même, pas par l'extension.",
+  "sidepanel_blocked_open": "Ouvrir dans un nouvel onglet",
+  "sidepanel_blocked_copy": "Copier le lien",
+  "sidepanel_blocked_copied": "Copié"
 }

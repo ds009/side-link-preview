@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Side Preview</title>
+    <title>Side Link Preview</title>
     <style>
       html, body {
         margin: 0;
@@ -56,51 +56,244 @@
       .tip {
         position: absolute;
         inset: 0;
-        padding: 24px;
-        color: #6b7280;
-        font-size: 13px;
-        line-height: 1.6;
-        background: #fff;
         display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 24px;
+        text-align: center;
+        background: #fff;
         box-sizing: border-box;
       }
       .tip.show {
-        display: block;
+        display: flex;
       }
-      .tip a {
-        color: #3b82f6;
-        text-decoration: none;
+      .tip .icon {
+        width: 56px;
+        height: 56px;
+        margin-bottom: 18px;
+        border-radius: 14px;
+        background: #fef3c7;
+        color: #b45309;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .tip .icon svg {
+        width: 30px;
+        height: 30px;
+      }
+      .tip h1 {
+        margin: 0 0 8px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+      }
+      .tip p {
+        margin: 0 0 6px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #6b7280;
+        max-width: 300px;
+      }
+      .tip .note {
+        margin-top: 6px;
+        font-size: 12px;
+        color: #9ca3af;
+        max-width: 300px;
+      }
+      .tip .url {
+        margin-top: 16px;
+        max-width: 320px;
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        background: #f9fafb;
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 11.5px;
+        color: #374151;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        box-sizing: border-box;
+      }
+      .tip .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .tip button {
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 7px 14px;
+        font-size: 12.5px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .tip button.primary {
+        background: #2563eb;
+        color: #fff;
+      }
+      .tip button.primary:hover {
+        background: #1d4ed8;
+      }
+      .tip button.secondary {
+        background: #fff;
+        color: #374151;
+        border-color: #d1d5db;
+      }
+      .tip button.secondary:hover {
+        background: #f3f4f6;
+      }
+      .tip button.secondary.copied {
+        color: #16a34a;
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+      }
+      .tip code {
+        background: #f3f4f6;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 11.5px;
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
       }
       .empty {
         position: absolute;
         inset: 0;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        color: #9ca3af;
-        font-size: 13px;
+        padding: 32px 24px;
+        text-align: center;
+        color: #374151;
         background: #fff;
+        box-sizing: border-box;
       }
       .empty.hidden {
         display: none;
+      }
+      .empty h1 {
+        margin: 0 0 8px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+      }
+      .empty p {
+        margin: 0 0 6px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #6b7280;
+        max-width: 280px;
+      }
+      .empty .hint {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #9ca3af;
+      }
+      .empty kbd {
+        display: inline-block;
+        padding: 1px 6px;
+        border: 1px solid #d1d5db;
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        background: #f9fafb;
+        font-family: inherit;
+        font-size: 11px;
+        color: #374151;
+      }
+      .empty .settings-link {
+        margin-top: 16px;
+        border: 1px solid #d1d5db;
+        background: #fff;
+        border-radius: 6px;
+        padding: 6px 14px;
+        cursor: pointer;
+        font-size: 12px;
+        color: #374151;
+      }
+      .empty .settings-link:hover {
+        background: #f3f4f6;
       }
     </style>
   </head>
   <body>
     <div class="bar">
-      <input id="addr" type="text" placeholder="URL" spellcheck="false" />
-      <button id="go" title="加载">Go</button>
-      <button id="pop" title="在新标签页打开">↗</button>
+      <input
+        id="addr"
+        type="text"
+        data-i18n-attr="placeholder=addr_placeholder"
+        placeholder="URL"
+        spellcheck="false"
+      />
+      <button
+        id="go"
+        data-i18n="btn_go"
+        data-i18n-attr="title=btn_go_title"
+        title="Load"
+      >Go</button>
+      <button
+        id="pop"
+        data-i18n-attr="title=btn_pop_title"
+        title="Open in new tab"
+      >↗</button>
+      <button
+        id="settings"
+        data-i18n-attr="title=btn_settings_title"
+        title="Settings"
+      >⚙</button>
     </div>
     <div class="frame-wrap">
       <iframe id="frame" referrerpolicy="no-referrer" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
-      <div id="empty" class="empty">点击页面中任意 target="_blank" 链接即可在此预览</div>
+      <div id="empty" class="empty">
+        <h1 data-i18n="sidepanel_welcome_title">You're all set.</h1>
+        <p data-i18n="sidepanel_welcome_body">
+          Click any link on the left and it opens here, side-by-side.
+        </p>
+        <p class="hint" data-i18n-html="sidepanel_welcome_bypass_html">
+          Hold <kbd>⌘</kbd> / <kbd>Ctrl</kbd> while clicking to open in a new tab instead.
+        </p>
+        <button
+          id="open-settings"
+          class="settings-link"
+          data-i18n="sidepanel_open_settings"
+        >Open settings</button>
+      </div>
       <div id="tip" class="tip">
-        该网站可能禁止在 iframe 中嵌入（<code>X-Frame-Options</code> / <code>CSP</code>）。
-        <br /><br />
-        请点击右上角 <strong>↗</strong> 在新标签页打开。
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2l8 4v6c0 5-3.5 9.2-8 10-4.5-.8-8-5-8-10V6l8-4z" />
+            <line x1="8" y1="8" x2="16" y2="16" />
+          </svg>
+        </div>
+        <h1 id="tip-title" data-i18n="sidepanel_blocked_title">Can't preview this page</h1>
+        <p id="tip-body" data-i18n-html="sidepanel_blocked_body_html">
+          This site's security policy (<code>X-Frame-Options</code> / <code>CSP</code>) blocks iframe embedding.
+        </p>
+        <p class="note" data-i18n="sidepanel_blocked_note">
+          This restriction is set by the site itself, not by the extension.
+        </p>
+        <div id="tip-url" class="url" title=""></div>
+        <div class="actions">
+          <button
+            id="tip-open"
+            class="primary"
+            type="button"
+            data-i18n="sidepanel_blocked_open"
+          >Open in new tab</button>
+          <button
+            id="tip-copy"
+            class="secondary"
+            type="button"
+            data-i18n="sidepanel_blocked_copy"
+          >Copy link</button>
+        </div>
       </div>
     </div>
+    <script src="i18n.js"></script>
     <script src="sidepanel.js"></script>
   </body>
 </html>

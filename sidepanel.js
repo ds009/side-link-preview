@@ -4,56 +4,114 @@ let tabId = Number(params.get('tabId')) || null;
 const frame = document.getElementById('frame');
 const addr = document.getElementById('addr');
 const tip = document.getElementById('tip');
+const tipUrlEl = document.getElementById('tip-url');
+const tipOpenBtn = document.getElementById('tip-open');
+const tipCopyBtn = document.getElementById('tip-copy');
 const empty = document.getElementById('empty');
 const goBtn = document.getElementById('go');
 const popBtn = document.getElementById('pop');
+const settingsBtn = document.getElementById('settings');
+const openSettingsBtn = document.getElementById('open-settings');
 
-let loadTimer = null;
+// 判定 iframe 是否被目标站拒绝加载的超时时间。
+// content.js 在成功进入 iframe 后会立刻 postMessage 一次 LOADED ping；
+// 在这个时间内没收到就视为被 XFO/CSP 拦掉（我们只对 Side Panel 自身发起的
+// 请求剥 XFO/CSP 头，但部分场景仍会失败，例如站点用 JS 检测 iframe、
+// 子资源加载失败、或被剥头后仍无法渲染）。
+const BLOCK_TIMEOUT_MS = 4000;
+
+let loadToken = 0;
+let blockTimer = null;
 let currentUrl = '';
+
+const clearBlockTimer = () => {
+  if (blockTimer) {
+    clearTimeout(blockTimer);
+    blockTimer = null;
+  }
+};
+
+const hideTip = () => tip.classList.remove('show');
 
 const load = (url) => {
   if (!url) return;
   currentUrl = url;
   addr.value = url;
-  tip.classList.remove('show');
+  loadToken++;
+  const myToken = loadToken;
+
+  hideTip();
   empty.classList.add('hidden');
   frame.style.display = '';
   frame.src = url;
 
-  // iframe 无法可靠感知 X-Frame-Options 错误，用超时 + load 事件组合判断
-  clearTimeout(loadTimer);
-  loadTimer = setTimeout(() => {
-    // 若 3 秒内 iframe 仍是 about:blank 或无法访问，提示用户
-    try {
-      // 跨域时访问 contentDocument 会抛错，这种情况下说明已经加载成功
-      const doc = frame.contentDocument;
-      if (doc && doc.location.href === 'about:blank') {
-        showBlockedTip();
-      }
-    } catch (_) {
-      // 跨域，正常加载
-    }
-  }, 3000);
+  clearBlockTimer();
+  blockTimer = setTimeout(() => {
+    if (myToken !== loadToken) return; // 已被更新的 load 取代
+    showBlockedTip();
+  }, BLOCK_TIMEOUT_MS);
 };
 
 const showBlockedTip = () => {
   frame.style.display = 'none';
+  if (tipUrlEl) {
+    tipUrlEl.textContent = currentUrl;
+    tipUrlEl.title = currentUrl;
+  }
   tip.classList.add('show');
 };
 
-frame.addEventListener('load', () => {
-  clearTimeout(loadTimer);
+frame.addEventListener('error', () => {
+  clearBlockTimer();
+  showBlockedTip();
 });
-
-frame.addEventListener('error', showBlockedTip);
 
 goBtn.addEventListener('click', () => load(addr.value.trim()));
 addr.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') load(addr.value.trim());
 });
-popBtn.addEventListener('click', () => {
+
+const openInNewTab = () => {
   if (currentUrl) chrome.tabs.create({ url: currentUrl });
+};
+popBtn.addEventListener('click', openInNewTab);
+tipOpenBtn?.addEventListener('click', openInNewTab);
+
+let copyTimer = null;
+tipCopyBtn?.addEventListener('click', async () => {
+  if (!currentUrl) return;
+  try {
+    await navigator.clipboard.writeText(currentUrl);
+    const orig =
+      tipCopyBtn.dataset.origLabel ||
+      tipCopyBtn.textContent ||
+      'Copy link';
+    tipCopyBtn.dataset.origLabel = orig;
+    tipCopyBtn.classList.add('copied');
+    tipCopyBtn.textContent =
+      (window.SLP_I18N && window.SLP_I18N.t
+        ? window.SLP_I18N.t('sidepanel_blocked_copied', 'Copied')
+        : 'Copied') || 'Copied';
+    clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => {
+      tipCopyBtn.classList.remove('copied');
+      tipCopyBtn.textContent = orig;
+    }, 1500);
+  } catch (err) {
+    console.warn('[SideLinkPreview] clipboard write failed:', err);
+  }
 });
+
+const openOptions = () => {
+  try {
+    chrome.runtime.openOptionsPage();
+  } catch (err) {
+    console.warn('[SideLinkPreview] openOptionsPage:', err);
+  }
+};
+
+settingsBtn?.addEventListener('click', openOptions);
+openSettingsBtn?.addEventListener('click', openOptions);
 
 // 如果 background 调 setOptions 还没生效就 open 了，URL 里会缺 tabId，
 // 这里兜底去查当前 active tab。
@@ -81,7 +139,6 @@ const readInitialUrl = async () => {
 
 readInitialUrl();
 
-// 监听会话存储变化：同一 tab 内再次点击链接时刷新侧边栏
 chrome.storage.session.onChanged.addListener(async (changes) => {
   const id = await resolveTabId();
   if (!id) return;
@@ -92,12 +149,18 @@ chrome.storage.session.onChanged.addListener(async (changes) => {
   }
 });
 
-// Side Panel 内的 iframe（及其嵌套 iframe）里的 content.js 在用户点击链接时
-// 会向 window.top 发此消息，这里接收后就地换 iframe 的 URL，实现「Side Panel
-// 内继续浏览」。
+// 监听 Side Panel 内 iframe（以及嵌套 iframe）里 content.js 发来的消息。
 window.addEventListener('message', (e) => {
   const data = e.data;
   if (!data || data.__slp !== 1) return;
+
+  if (data.type === 'LOADED') {
+    // 目标站已成功执行到我们的 content.js，说明没被 XFO/CSP 拦掉，
+    // 取消"疑似被拦截"的定时器。
+    clearBlockTimer();
+    return;
+  }
+
   if (data.type === 'NAVIGATE' && typeof data.url === 'string') {
     if (data.url !== currentUrl) load(data.url);
   }

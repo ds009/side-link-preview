@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Side Link Preview · 设置</title>
+    <title>Side Link Preview</title>
     <style>
       :root {
         --fg: #111827;
@@ -157,6 +157,49 @@
       .inline input[type='number']:disabled {
         cursor: not-allowed;
       }
+      .toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .toggle:hover {
+        border-color: var(--border-strong);
+        background: #fafafa;
+      }
+      .toggle:has(input:checked) {
+        border-color: var(--primary);
+        background: #eff6ff;
+        color: var(--primary);
+      }
+      .toggle input {
+        margin: 0;
+        accent-color: var(--primary);
+      }
+      select {
+        padding: 8px 28px 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff
+          url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>")
+          no-repeat right 10px center;
+        font-size: 13px;
+        color: var(--fg);
+        outline: none;
+        appearance: none;
+        cursor: pointer;
+        min-width: 180px;
+      }
+      select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      }
       .callout {
         margin-top: 12px;
         padding: 10px 12px;
@@ -166,6 +209,31 @@
         color: #92400e;
         font-size: 12.5px;
         line-height: 1.55;
+      }
+      .callout.info {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1e3a8a;
+      }
+      .callout kbd {
+        display: inline-block;
+        padding: 0 5px;
+        border: 1px solid #c7d2fe;
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        background: #fff;
+        font-family: inherit;
+        font-size: 11.5px;
+        color: #1e3a8a;
+      }
+      .callout em {
+        font-style: normal;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: #fff;
+        border: 1px solid #bfdbfe;
+        color: #1e3a8a;
+        font-size: 11.5px;
       }
       footer {
         margin-top: 12px;
@@ -193,36 +261,90 @@
       footer button:hover {
         background: #f3f4f6;
       }
+      .credits {
+        max-width: 680px;
+        margin: 28px auto 0;
+        padding-top: 18px;
+        border-top: 1px dashed var(--border);
+        text-align: center;
+        color: var(--fg-subtle);
+        font-size: 12.5px;
+      }
+      .credits a {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--fg-muted);
+        text-decoration: none;
+        transition: all 0.15s;
+      }
+      .credits a:hover {
+        color: #db2777;
+        border-color: #fbcfe8;
+        background: #fdf2f8;
+      }
+      .credits svg {
+        width: 14px;
+        height: 14px;
+        color: #db2777;
+      }
     </style>
   </head>
   <body>
     <main>
       <header>
-        <h1>Side Link Preview</h1>
-        <p>更改会自动保存，刷新页面后生效。</p>
+        <h1 data-i18n="app_name">Side Link Preview</h1>
+        <p data-i18n="header_subtitle">
+          Changes are saved automatically. Reload the page for them to take effect.
+        </p>
       </header>
 
       <section>
-        <h2>作用范围</h2>
-        <p class="hint">
-          每行一个域名，支持子域名自动匹配（填 <code>example.com</code> 会匹配
-          <code>www.example.com</code>、<code>blog.example.com</code>）；也支持
-          <code>*</code> 通配符（如 <code>*example*</code> 匹配任何域名中包含
-          <code>example</code> 的站点）。
+        <h2 data-i18n="section_language">Language</h2>
+        <p class="hint" data-i18n="language_hint">
+          Language of the settings page and side panel UI.
+        </p>
+        <select id="locale">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="fr">Français</option>
+          <option value="es">Español</option>
+          <option value="de">Deutsch</option>
+          <option value="pt">Português</option>
+        </select>
+      </section>
+
+      <section>
+        <h2 data-i18n="section_scope">Scope</h2>
+        <p class="hint" data-i18n-html="scope_hint_html">
+          One domain per line. Subdomains are matched automatically — entering
+          <code>example.com</code> also matches <code>www.example.com</code> and
+          <code>blog.example.com</code>. The <code>*</code> wildcard is also
+          supported (e.g. <code>*keyword*</code> matches any domain containing
+          <code>keyword</code>).
         </p>
         <div class="radio-group">
           <label>
             <input type="radio" name="mode" value="blacklist" />
-            <span>黑名单（列表外的站点启用）</span>
+            <span data-i18n="mode_blacklist">
+              Blacklist (enabled on sites not in the list)
+            </span>
           </label>
           <label>
             <input type="radio" name="mode" value="whitelist" />
-            <span>白名单（只在列表中启用）</span>
+            <span data-i18n="mode_whitelist">
+              Whitelist (enabled only on sites in the list)
+            </span>
           </label>
         </div>
         <div style="margin-top: 14px;">
           <textarea
             id="list"
+            data-i18n-attr="placeholder=scope_placeholder"
             placeholder="example.com&#10;*keyword*"
             spellcheck="false"
           ></textarea>
@@ -230,22 +352,23 @@
       </section>
 
       <section>
-        <h2>触发方式</h2>
-        <p class="hint">
-          点击模式：单击链接在侧边栏打开。Hover 模式：鼠标悬停到链接超过延迟时间即预览。
+        <h2 data-i18n="section_trigger">Trigger</h2>
+        <p class="hint" data-i18n="trigger_hint">
+          Click: open the link in the side panel on click. Hover: automatic
+          preview after hovering longer than the delay.
         </p>
         <div class="radio-group">
           <label>
             <input type="radio" name="trigger" value="click" />
-            <span>点击打开</span>
+            <span data-i18n="trigger_click">Click to open</span>
           </label>
           <label>
             <input type="radio" name="trigger" value="hover" />
-            <span>Hover 打开</span>
+            <span data-i18n="trigger_hover">Hover to open</span>
           </label>
         </div>
         <div class="inline" id="hoverDelayRow">
-          <span>Hover 延迟</span>
+          <span data-i18n="hover_delay_label">Hover delay</span>
           <input
             id="hoverDelay"
             type="number"
@@ -253,36 +376,68 @@
             max="5000"
             step="50"
           />
-          <span>毫秒</span>
+          <span data-i18n="hover_delay_unit">ms</span>
         </div>
-        <div class="callout" id="hoverNote" hidden>
-          Hover 预览需要侧边栏已处于打开状态。首次启用请先点击工具栏上的
-          Side Panel 图标或扩展图标把侧边栏打开。
+        <div class="callout" id="hoverNote" data-i18n="hover_note" hidden>
+          Hover preview requires the side panel to already be open. The first
+          time, click the toolbar side-panel icon or the extension icon to open
+          it.
+        </div>
+        <div
+          class="callout info"
+          id="clickNote"
+          data-i18n-html="trigger_click_note_html"
+          hidden
+        >
+          Want a link to <strong>skip</strong> the Side Panel? Hold
+          <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd>
+          while clicking — it will open in a new tab as usual. To always skip
+          a whole site, add its domain under <em>Scope</em> above.
         </div>
       </section>
 
       <section>
-        <h2>链接范围</h2>
-        <p class="hint">
-          是否只接管带 <code>target="_blank"</code> 的新标签页链接，或所有站内外链接。
+        <h2 data-i18n="section_link_scope">Link scope</h2>
+        <p class="hint" data-i18n-html="link_scope_hint_html">
+          By default only <code>target="_blank"</code> links (the ones a page
+          asks to open in a new tab) are intercepted. Enable the option below
+          to also send same-tab (non-<code>_blank</code>) links to the side
+          panel.
         </p>
-        <div class="radio-group">
-          <label>
-            <input type="radio" name="linkScope" value="blank-only" />
-            <span>仅新标签页链接（_blank）</span>
-          </label>
-          <label>
-            <input type="radio" name="linkScope" value="all" />
-            <span>所有链接</span>
-          </label>
-        </div>
+        <label class="toggle">
+          <input type="checkbox" id="includeNonBlank" />
+          <span data-i18n="link_scope_include_nonblank">
+            Also open non-_blank links in the side panel
+          </span>
+        </label>
       </section>
 
       <footer>
         <span id="status" class="status"></span>
-        <button id="reset" type="button" title="恢复默认设置">恢复默认</button>
+        <button
+          id="reset"
+          type="button"
+          data-i18n="reset_btn"
+          data-i18n-attr="title=reset_btn_title"
+          title="Restore default settings"
+        >
+          Reset
+        </button>
       </footer>
     </main>
+    <div class="credits">
+      <a
+        href="https://github.com/sponsors/ds009"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 21s-7-4.35-9.5-8.5C.5 8.5 3 4 7 4c2 0 3.5 1 5 3 1.5-2 3-3 5-3 4 0 6.5 4.5 4.5 8.5C19 16.65 12 21 12 21z"/>
+        </svg>
+        <span data-i18n="sponsor_cta">Sponsor on GitHub</span>
+      </a>
+    </div>
+    <script src="i18n.js"></script>
     <script src="options.js"></script>
   </body>
 </html>

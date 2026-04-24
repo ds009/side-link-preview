@@ -2,63 +2,72 @@
 
 _Last updated: 2026-04-24_
 
-Side Link Preview（"本扩展"）尊重并保护用户隐私。本政策说明本扩展在运行过程中
-涉及的所有数据处理方式。
+Side Link Preview (the "Extension") respects and protects user privacy. This
+policy describes every kind of data handling the Extension performs at
+runtime.
 
 ## TL;DR
 
-- 本扩展 **不收集、不上传、不出售** 任何个人数据。
-- 不进行任何形式的用户追踪（analytics / telemetry）。
-- 不向作者或任何第三方发送数据。
-- 所有运行所需的数据（用户设置、当前侧边栏 URL）仅保存在浏览器本地。
+- The Extension **does not collect, transmit, or sell** any personal data.
+- No analytics, telemetry, or user tracking of any form.
+- No data is sent to the author or to any third party.
+- All data required for the Extension to operate (user settings, current
+  Side Panel URL) is stored locally in your browser.
 
-## 我们收集的数据
+## Data we collect
 
-**无。** 本扩展不会收集以下任何类别的信息：
+**None.** The Extension does not collect any of the following categories of
+information:
 
-- 个人身份信息（姓名、邮箱、地址等）
-- 身份凭证（密码、Cookie、OAuth token）
-- 支付信息
-- 认证信息
-- 个人通讯（邮件、聊天记录等）
-- 位置信息
-- 网页内容、浏览历史
-- 用户活动（点击流、输入、按键）
-- 网站流量 / 性能数据
+- Personally identifiable information (name, email, address, etc.)
+- Authentication credentials (passwords, cookies, OAuth tokens)
+- Payment information
+- Authentication information
+- Personal communications (email, chat messages, etc.)
+- Location data
+- Web content or browsing history
+- User activity (clicks, input, keystrokes)
+- Website traffic or performance metrics
 
-## 本地存储的数据
+## Data stored locally
 
-为保证功能正常运行，本扩展会在你的浏览器中保存以下数据。这些数据**永远不会
-离开你的设备**（除非你在多设备登录同一 Chrome 账号，由 Chrome 同步）：
+In order to function, the Extension stores the following data in your
+browser. This data **never leaves your device** — except when you are signed
+in to the same Chrome profile on multiple devices, in which case Chrome
+itself syncs it for you:
 
-| 存储位置               | 内容                                   | 用途                                           |
-| ---------------------- | -------------------------------------- | ---------------------------------------------- |
-| `chrome.storage.sync`  | 用户设置（黑白名单模式、域名列表、触发方式等） | 保存偏好、跨设备同步                           |
-| `chrome.storage.session` | 每个 tab 对应的"下一个要在侧边栏打开的 URL" | 在 content script 和 Side Panel 之间传递消息 |
+| Storage                    | Content                                                                        | Purpose                                                       |
+| -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `chrome.storage.sync`      | User settings (blacklist/whitelist mode, domain list, trigger preferences, UI language, etc.) | Persist preferences and sync them across your devices         |
+| `chrome.storage.session`   | The "next URL to open in the Side Panel" for each tab                          | Relay the URL between the content script and the Side Panel  |
 
-`chrome.storage.session` 在浏览器关闭后自动清空。
+`chrome.storage.session` is cleared automatically when the browser shuts
+down.
 
-## 我们请求的权限及用途
+## Permissions and why we request them
 
-| 权限                     | 用途                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------ |
-| `sidePanel`              | 打开 Chrome 右侧的 Side Panel 以渲染预览。                                                 |
-| `storage`                | 保存用户设置 / 在内部模块间传递当前 URL。                                                  |
-| `tabs`                   | 获取当前 tab 的 ID 和窗口 ID，用于将 Side Panel 绑定到正确的 tab。                         |
-| `scripting`              | 由内容脚本声明所需（Manifest V3 规范）。                                                   |
-| `declarativeNetRequest`  | **仅针对本扩展 Side Panel 发起的 iframe 请求** 移除 `X-Frame-Options` / `CSP` 响应头，让目标页面可以被嵌入。对普通网页浏览**没有任何影响**。 |
-| `host_permissions: <all_urls>` | 在任意网站上拦截用户点击的外链并转发到侧边栏。这是扩展的核心功能。                     |
+| Permission                       | Purpose                                                                                                                                                                                            |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sidePanel`                      | Open Chrome's right-hand Side Panel to render the preview.                                                                                                                                         |
+| `storage`                        | Persist user settings and relay the current URL between internal modules.                                                                                                                          |
+| `tabs`                           | Retrieve the current tab's ID and window ID so the Side Panel can be bound to the correct tab.                                                                                                     |
+| `scripting`                      | Required to declare content scripts (Manifest V3 requirement).                                                                                                                                     |
+| `declarativeNetRequest`          | **Only for iframe requests initiated by this Extension's Side Panel**, strip `X-Frame-Options` / `CSP` response headers so target pages can be embedded. **Regular browsing is never affected.**   |
+| `host_permissions: <all_urls>`   | Required to intercept outgoing link clicks on any website and forward them to the Side Panel — the core feature of the Extension.                                                                  |
 
-## 数据共享
+## Data sharing
 
-本扩展**不与任何第三方共享数据**（因为根本没有数据可共享）。
+The Extension **does not share data with any third party** (because there
+is no data to share).
 
-## 变更
+## Changes
 
-任何对本政策的更新会通过扩展仓库的 Git 提交记录体现。重大变更会在商店更新
-日志中说明。
+Any update to this policy will be reflected in the Git history of the
+Extension's repository. Material changes will also be called out in the
+Chrome Web Store changelog.
 
-## 联系方式
+## Contact
 
-如对本政策有任何疑问，请通过扩展仓库的 Issues 联系：
-<https://github.com/your-github/side-link-preview/issues>
+If you have any questions about this policy, please open an issue on the
+Extension's repository:
+<https://github.com/ds009/side-link-preview/issues>

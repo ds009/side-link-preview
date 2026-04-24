@@ -4,6 +4,7 @@ const DEFAULTS = {
   trigger: 'click',
   hoverDelay: 500,
   linkScope: 'blank-only',
+  locale: 'en',
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -12,14 +13,18 @@ const $$ = (sel) => document.querySelectorAll(sel);
 const els = {
   mode: $$('input[name="mode"]'),
   trigger: $$('input[name="trigger"]'),
-  linkScope: $$('input[name="linkScope"]'),
+  includeNonBlank: $('#includeNonBlank'),
   list: $('#list'),
   hoverDelay: $('#hoverDelay'),
   hoverDelayRow: $('#hoverDelayRow'),
   hoverNote: $('#hoverNote'),
+  clickNote: $('#clickNote'),
+  locale: $('#locale'),
   status: $('#status'),
   reset: $('#reset'),
 };
+
+const t = (key, fallback) => window.SLP_I18N?.t?.(key, fallback) ?? (fallback ?? key);
 
 const getRadio = (nodeList) => {
   for (const el of nodeList) if (el.checked) return el.value;
@@ -41,33 +46,41 @@ const clampHoverDelay = (v) => {
   return Math.max(100, Math.min(5000, Math.round(n)));
 };
 
+const normalizeLocale = (loc) => {
+  const allowed = window.SLP_I18N?.LOCALES || { en: 1 };
+  return allowed[loc] ? loc : DEFAULTS.locale;
+};
+
 const syncTriggerUi = (trigger) => {
   const isHover = trigger === 'hover';
   els.hoverDelay.disabled = !isHover;
   els.hoverDelayRow.classList.toggle('disabled', !isHover);
   els.hoverNote.hidden = !isHover;
+  if (els.clickNote) els.clickNote.hidden = isHover;
 };
 
 const render = (s) => {
   setRadio(els.mode, s.mode);
   setRadio(els.trigger, s.trigger);
-  setRadio(els.linkScope, s.linkScope);
+  els.includeNonBlank.checked = s.linkScope === 'all';
   els.list.value = s.list.join('\n');
   els.hoverDelay.value = s.hoverDelay;
+  els.locale.value = normalizeLocale(s.locale);
   syncTriggerUi(s.trigger);
 };
 
 const readForm = () => ({
   mode: getRadio(els.mode) || DEFAULTS.mode,
   trigger: getRadio(els.trigger) || DEFAULTS.trigger,
-  linkScope: getRadio(els.linkScope) || DEFAULTS.linkScope,
+  linkScope: els.includeNonBlank.checked ? 'all' : 'blank-only',
   list: parseList(els.list.value),
   hoverDelay: clampHoverDelay(els.hoverDelay.value),
+  locale: normalizeLocale(els.locale.value),
 });
 
 let statusTimer = null;
 const flashSaved = () => {
-  els.status.textContent = '已保存';
+  els.status.textContent = t('saved', 'Saved');
   els.status.classList.add('ok');
   clearTimeout(statusTimer);
   statusTimer = setTimeout(() => {
@@ -83,7 +96,7 @@ const save = async () => {
     syncTriggerUi(next.trigger);
     flashSaved();
   } catch (err) {
-    els.status.textContent = '保存失败：' + err.message;
+    els.status.textContent = t('save_failed', 'Save failed: ') + err.message;
     els.status.classList.remove('ok');
   }
 };
@@ -106,17 +119,21 @@ const init = async () => {
 
   const debouncedSave = debounce(save, 300);
 
-  for (const el of [...els.mode, ...els.trigger, ...els.linkScope]) {
+  for (const el of [...els.mode, ...els.trigger]) {
     el.addEventListener('change', save);
   }
+  els.includeNonBlank.addEventListener('change', save);
   els.list.addEventListener('input', debouncedSave);
   els.hoverDelay.addEventListener('input', debouncedSave);
   els.hoverDelay.addEventListener('blur', save);
+  els.locale.addEventListener('change', save);
 
   els.reset.addEventListener('click', async () => {
-    if (!confirm('恢复默认设置？当前的域名列表会被清空。')) return;
-    await chrome.storage.sync.set({ slpSettings: { ...DEFAULTS } });
-    render({ ...DEFAULTS });
+    const msg = t('reset_confirm', 'Reset to defaults? The domain list will be cleared.');
+    if (!confirm(msg)) return;
+    const next = { ...DEFAULTS };
+    await chrome.storage.sync.set({ slpSettings: next });
+    render(next);
     flashSaved();
   });
 };
