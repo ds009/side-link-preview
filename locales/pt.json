@@ -1,44 +1,40 @@
 {
   "app_name": "Side Link Preview",
   "header_subtitle": "As alterações são salvas automaticamente. Recarregue a página para que tenham efeito.",
-
   "section_language": "Idioma",
   "language_hint": "Idioma da página de configurações e da interface do painel lateral.",
-
   "section_scope": "Escopo",
   "scope_hint_html": "Um domínio por linha. Os subdomínios são reconhecidos automaticamente — <code>example.com</code> também corresponde a <code>www.example.com</code> e <code>blog.example.com</code>. O curinga <code>*</code> também é aceito (ex.: <code>*palavra*</code> corresponde a qualquer domínio que contenha <code>palavra</code>).",
   "mode_blacklist": "Lista negra (ativo exceto nos sites da lista)",
   "mode_whitelist": "Lista branca (ativo apenas nos sites da lista)",
   "scope_placeholder": "example.com\n*palavra*",
-
   "section_trigger": "Disparo",
-  "trigger_hint": "Clique: abrir o link no painel lateral ao clicar. Hover: prévia automática ao passar o mouse por mais tempo que o atraso.",
-  "trigger_click": "Abrir com clique",
-  "trigger_hover": "Abrir ao passar o mouse",
+  "trigger_hint": "Clicar em um link sempre o abre no painel lateral. Ative a opção abaixo para também ter uma prévia automática ao passar o mouse por um link por mais tempo que o atraso.",
+  "trigger_hover_label": "Prévia também ao passar o mouse",
   "hover_delay_label": "Atraso do hover",
   "hover_delay_unit": "ms",
-  "hover_note": "A prévia por hover exige que o painel lateral já esteja aberto. Na primeira vez, clique no ícone do painel lateral na barra de ferramentas ou no ícone da extensão para abri-lo.",
-  "trigger_click_note_html": "Quer que um link <strong>ignore</strong> o painel lateral? Segure <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> ao clicar — ele abrirá em uma nova aba como de costume. Para sempre ignorar um site inteiro, adicione o domínio em <em>Escopo</em> acima.",
-
+  "hover_note": "A prévia por hover exige que o painel lateral já esteja aberto. Clique no botão abaixo para abri-lo agora — só é necessário uma vez por janela.",
+  "open_side_panel_btn": "Abrir painel lateral agora",
+  "side_panel_opened": "Aberto ✓",
+  "open_side_panel_failed": "Falha ao abrir — use o ícone da barra",
+  "trigger_click_note_html": "Quer que um link <strong>ignore</strong> o painel lateral? Segure <kbd>⌘</kbd> / <kbd>Ctrl</kbd> para uma nova aba, <kbd>⇧</kbd> para uma nova janela ou <kbd>⌥</kbd> Option / <kbd>Alt</kbd> para abrir na aba atual. Para sempre ignorar um site inteiro, adicione o domínio em <em>Escopo</em> acima.",
   "section_link_scope": "Escopo de links",
   "link_scope_hint_html": "Por padrão, apenas os links <code>target=\"_blank\"</code> (abertura em nova aba) são interceptados. Ative a opção abaixo para enviar também os links internos (não <code>_blank</code>) ao painel lateral.",
   "link_scope_include_nonblank": "Abrir também os links não-_blank no painel lateral",
-
   "saved": "Salvo",
   "save_failed": "Falha ao salvar: ",
   "reset_btn": "Redefinir",
   "reset_btn_title": "Restaurar configurações padrão",
   "reset_confirm": "Redefinir para os padrões? A lista de domínios será apagada.",
-
   "addr_placeholder": "URL",
   "btn_go": "Ir",
   "btn_go_title": "Carregar",
   "btn_pop_title": "Abrir em nova aba",
   "btn_settings_title": "Configurações",
-
   "sidepanel_welcome_title": "Tudo pronto.",
   "sidepanel_welcome_body": "Clique em qualquer link à esquerda e ele abre aqui, lado a lado.",
-  "sidepanel_welcome_bypass_html": "Segure <kbd>⌘</kbd> / <kbd>Ctrl</kbd> ao clicar para abrir em uma nova aba.",
+  "sidepanel_welcome_pin_html": "Dica: clique no ícone de <strong>fixar</strong> no canto superior direito deste painel para que ele permaneça aberto ao trocar de aba.",
+  "sidepanel_welcome_bypass_html": "Segure <kbd>⌘</kbd> / <kbd>Ctrl</kbd> para abrir em uma nova aba, ou <kbd>⌥</kbd> Option / <kbd>Alt</kbd> para abrir na aba atual — ambos ignoram o painel lateral.",
   "sidepanel_open_settings": "Abrir configurações",
   "sponsor_cta": "Patrocinar no GitHub",
   "sidepanel_blocked_title": "Não é possível visualizar",
@@ -46,5 +42,7 @@
   "sidepanel_blocked_note": "Essa restrição é definida pelo próprio site, não pela extensão.",
   "sidepanel_blocked_open": "Abrir em nova aba",
   "sidepanel_blocked_copy": "Copiar link",
-  "sidepanel_blocked_copied": "Copiado"
+  "sidepanel_blocked_copied": "Copiado",
+  "context_menu_open_in_side_panel": "Abrir link no painel lateral",
+  "storage_quota_warning": "A lista de domínios excedeu o limite do armazenamento sincronizado do Chrome. Por favor, encurte-a."
 }

@@ -1,44 +1,40 @@
 {
   "app_name": "Side Link Preview",
   "header_subtitle": "Changes are saved automatically. Reload the page for them to take effect.",
-
   "section_language": "Language",
   "language_hint": "Language of the settings page and side panel UI.",
-
   "section_scope": "Scope",
   "scope_hint_html": "One domain per line. Subdomains are matched automatically — entering <code>example.com</code> also matches <code>www.example.com</code> and <code>blog.example.com</code>. The <code>*</code> wildcard is also supported (e.g. <code>*keyword*</code> matches any domain containing <code>keyword</code>).",
   "mode_blacklist": "Blacklist (enabled on sites not in the list)",
   "mode_whitelist": "Whitelist (enabled only on sites in the list)",
   "scope_placeholder": "example.com\n*keyword*",
-
   "section_trigger": "Trigger",
-  "trigger_hint": "Click: open the link in the side panel on click. Hover: automatic preview after hovering longer than the delay.",
-  "trigger_click": "Click to open",
-  "trigger_hover": "Hover to open",
+  "trigger_hint": "Clicking a link always opens it in the side panel. Enable the toggle below to additionally get a preview automatically when you hover a link longer than the delay.",
+  "trigger_hover_label": "Also preview on hover",
   "hover_delay_label": "Hover delay",
   "hover_delay_unit": "ms",
-  "hover_note": "Hover preview requires the side panel to already be open. The first time, click the toolbar side-panel icon or the extension icon to open it.",
-  "trigger_click_note_html": "Want a link to <strong>skip</strong> the Side Panel? Hold <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> while clicking — it will open in a new tab as usual. To always skip a whole site, add its domain under <em>Scope</em> above.",
-
+  "hover_note": "Hover preview requires the side panel to already be open. Click the button below to open it now — you only need to do this once per browser window.",
+  "open_side_panel_btn": "Open side panel now",
+  "side_panel_opened": "Opened ✓",
+  "open_side_panel_failed": "Could not open — use toolbar icon",
+  "trigger_click_note_html": "Want a link to <strong>skip</strong> the Side Panel? Hold <kbd>⌘</kbd> / <kbd>Ctrl</kbd> for a new tab, <kbd>⇧</kbd> for a new window, or <kbd>⌥</kbd> Option / <kbd>Alt</kbd> to open in the current tab. To always skip a whole site, add its domain under <em>Scope</em> above.",
   "section_link_scope": "Link scope",
   "link_scope_hint_html": "By default only <code>target=\"_blank\"</code> links (the ones a page asks to open in a new tab) are intercepted. Enable the option below to also send same-tab (non-<code>_blank</code>) links to the side panel.",
   "link_scope_include_nonblank": "Also open non-_blank links in the side panel",
-
   "saved": "Saved",
   "save_failed": "Save failed: ",
   "reset_btn": "Reset",
   "reset_btn_title": "Restore default settings",
   "reset_confirm": "Reset to defaults? The domain list will be cleared.",
-
   "addr_placeholder": "URL",
   "btn_go": "Go",
   "btn_go_title": "Load",
   "btn_pop_title": "Open in new tab",
   "btn_settings_title": "Settings",
-
   "sidepanel_welcome_title": "You're all set.",
   "sidepanel_welcome_body": "Click any link on the left and it opens here, side-by-side.",
-  "sidepanel_welcome_bypass_html": "Hold <kbd>⌘</kbd> / <kbd>Ctrl</kbd> while clicking to open in a new tab instead.",
+  "sidepanel_welcome_pin_html": "Tip: click the <strong>pin</strong> icon at the top-right of this panel so it stays open when you switch tabs.",
+  "sidepanel_welcome_bypass_html": "Hold <kbd>⌘</kbd> / <kbd>Ctrl</kbd> to open a new tab, or <kbd>⌥</kbd> Option / <kbd>Alt</kbd> to open in the current tab — both bypass the Side Panel.",
   "sidepanel_open_settings": "Open settings",
   "sponsor_cta": "Sponsor on GitHub",
   "sidepanel_blocked_title": "Can't preview this page",
@@ -46,5 +42,7 @@
   "sidepanel_blocked_note": "This restriction is set by the site itself — not by the extension.",
   "sidepanel_blocked_open": "Open in new tab",
   "sidepanel_blocked_copy": "Copy link",
-  "sidepanel_blocked_copied": "Copied"
+  "sidepanel_blocked_copied": "Copied",
+  "context_menu_open_in_side_panel": "Open link in Side Panel",
+  "storage_quota_warning": "Domain list is too long for Chrome sync storage. Please shorten it."
 }

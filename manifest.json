@@ -2,9 +2,8 @@
   "manifest_version": 3,
   "name": "Side Link Preview",
   "version": "0.9.0",
-  "description": "Preview target=\"_blank\" links in Chrome's Side Panel for a split-view browsing experience.",
-  "minimum_chrome_version": "114",
-  "author": "ds009",
+  "description": "Preview links in Chrome's Side Panel — an Arc-style split view and Edge-style side-by-side reading, on stock Chrome.",
+  "minimum_chrome_version": "119",
   "homepage_url": "https://github.com/ds009/side-link-preview",
   "icons": {
     "16": "icons/icon-16.png",
@@ -17,7 +16,8 @@
     "storage",
     "tabs",
     "scripting",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "contextMenus"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -29,16 +29,50 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
+      "exclude_matches": [
+        "*://accounts.google.com/*",
+        "*://accounts.youtube.com/*",
+        "*://login.microsoftonline.com/*",
+        "*://login.live.com/*",
+        "*://appleid.apple.com/*",
+        "*://idmsa.apple.com/*",
+        "*://signin.aws.amazon.com/*",
+        "*://*.okta.com/*",
+        "*://*.duosecurity.com/*",
+        "*://*.onelogin.com/*",
+        "*://auth0.com/*",
+        "*://*.auth0.com/*",
+        "*://checkout.stripe.com/*",
+        "*://*.paypal.com/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_start",
-      "all_frames": true
+      "all_frames": true,
+      "match_origin_as_fallback": true
     },
     {
       "matches": ["<all_urls>"],
+      "exclude_matches": [
+        "*://accounts.google.com/*",
+        "*://accounts.youtube.com/*",
+        "*://login.microsoftonline.com/*",
+        "*://login.live.com/*",
+        "*://appleid.apple.com/*",
+        "*://idmsa.apple.com/*",
+        "*://signin.aws.amazon.com/*",
+        "*://*.okta.com/*",
+        "*://*.duosecurity.com/*",
+        "*://*.onelogin.com/*",
+        "*://auth0.com/*",
+        "*://*.auth0.com/*",
+        "*://checkout.stripe.com/*",
+        "*://*.paypal.com/*"
+      ],
       "js": ["injected.js"],
       "run_at": "document_start",
       "all_frames": true,
-      "world": "MAIN"
+      "world": "MAIN",
+      "match_origin_as_fallback": true
     }
   ],
   "action": {
@@ -53,5 +87,18 @@
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
-  }
+  },
+  "commands": {
+    "_execute_action": {
+      "description": "Open Side Link Preview side panel"
+    },
+    "toggle-side-panel": {
+      "suggested_key": {
+        "default": "Alt+Shift+P",
+        "mac": "Alt+Shift+P"
+      },
+      "description": "Preview the current tab's URL in the Side Panel"
+    }
+  },
+  "short_name": "Side Link"
 }

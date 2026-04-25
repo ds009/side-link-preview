@@ -1,7 +1,7 @@
 const DEFAULTS = {
   mode: 'blacklist',
   list: [],
-  trigger: 'click',
+  hoverEnabled: false,
   hoverDelay: 500,
   linkScope: 'blank-only',
   locale: 'en',
@@ -12,17 +12,28 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 const els = {
   mode: $$('input[name="mode"]'),
-  trigger: $$('input[name="trigger"]'),
+  hoverEnabled: $('#hoverEnabled'),
   includeNonBlank: $('#includeNonBlank'),
   list: $('#list'),
   hoverDelay: $('#hoverDelay'),
   hoverDelayRow: $('#hoverDelayRow'),
   hoverNote: $('#hoverNote'),
-  clickNote: $('#clickNote'),
+  openSidePanel: $('#openSidePanel'),
   locale: $('#locale'),
   status: $('#status'),
   reset: $('#reset'),
 };
+
+// Pre-fetch the options page's own window id: when the user clicks "Open side
+// panel now" we have to call chrome.sidePanel.open() synchronously to keep
+// the user gesture valid, so we can't await inside the click handler.
+let ownWindowId = null;
+chrome.windows
+  ?.getCurrent()
+  .then((w) => {
+    ownWindowId = w?.id ?? null;
+  })
+  .catch(() => {});
 
 const t = (key, fallback) => window.SLP_I18N?.t?.(key, fallback) ?? (fallback ?? key);
 
@@ -51,27 +62,25 @@ const normalizeLocale = (loc) => {
   return allowed[loc] ? loc : DEFAULTS.locale;
 };
 
-const syncTriggerUi = (trigger) => {
-  const isHover = trigger === 'hover';
-  els.hoverDelay.disabled = !isHover;
-  els.hoverDelayRow.classList.toggle('disabled', !isHover);
-  els.hoverNote.hidden = !isHover;
-  if (els.clickNote) els.clickNote.hidden = isHover;
+const syncHoverUi = (hoverEnabled) => {
+  els.hoverDelay.disabled = !hoverEnabled;
+  els.hoverDelayRow.classList.toggle('disabled', !hoverEnabled);
+  els.hoverNote.hidden = !hoverEnabled;
 };
 
 const render = (s) => {
   setRadio(els.mode, s.mode);
-  setRadio(els.trigger, s.trigger);
+  els.hoverEnabled.checked = !!s.hoverEnabled;
   els.includeNonBlank.checked = s.linkScope === 'all';
   els.list.value = s.list.join('\n');
   els.hoverDelay.value = s.hoverDelay;
   els.locale.value = normalizeLocale(s.locale);
-  syncTriggerUi(s.trigger);
+  syncHoverUi(s.hoverEnabled);
 };
 
 const readForm = () => ({
   mode: getRadio(els.mode) || DEFAULTS.mode,
-  trigger: getRadio(els.trigger) || DEFAULTS.trigger,
+  hoverEnabled: !!els.hoverEnabled.checked,
   linkScope: els.includeNonBlank.checked ? 'all' : 'blank-only',
   list: parseList(els.list.value),
   hoverDelay: clampHoverDelay(els.hoverDelay.value),
@@ -89,11 +98,29 @@ const flashSaved = () => {
   }, 1200);
 };
 
+// chrome.storage.sync has a hard 8192-byte limit per key. Leave a little
+// headroom: anything above 7500 bytes is rejected here with a friendly
+// message, so the user trims their domain list instead of eventually hitting
+// a cryptic "QUOTA_BYTES_PER_ITEM" error thrown by set().
+const SYNC_ITEM_SOFT_LIMIT = 7500;
+
+const byteLength = (obj) =>
+  new TextEncoder().encode(JSON.stringify(obj)).length;
+
 const save = async () => {
   const next = readForm();
+  const size = byteLength(next);
+  if (size > SYNC_ITEM_SOFT_LIMIT) {
+    els.status.textContent = t(
+      'storage_quota_warning',
+      'Domain list is too long for Chrome sync storage. Please shorten it.',
+    );
+    els.status.classList.remove('ok');
+    return;
+  }
   try {
     await chrome.storage.sync.set({ slpSettings: next });
-    syncTriggerUi(next.trigger);
+    syncHoverUi(next.hoverEnabled);
     flashSaved();
   } catch (err) {
     els.status.textContent = t('save_failed', 'Save failed: ') + err.message;
@@ -113,15 +140,25 @@ const init = async () => {
   let s = { ...DEFAULTS };
   try {
     const data = await chrome.storage.sync.get('slpSettings');
-    if (data.slpSettings) s = { ...DEFAULTS, ...data.slpSettings };
+    if (data.slpSettings) {
+      s = { ...DEFAULTS, ...data.slpSettings };
+      // Migrate old schema: `trigger: 'click' | 'hover'` → `hoverEnabled`.
+      if (
+        data.slpSettings.hoverEnabled === undefined &&
+        data.slpSettings.trigger === 'hover'
+      ) {
+        s.hoverEnabled = true;
+      }
+    }
   } catch (_) {}
   render(s);
 
   const debouncedSave = debounce(save, 300);
 
-  for (const el of [...els.mode, ...els.trigger]) {
+  for (const el of els.mode) {
     el.addEventListener('change', save);
   }
+  els.hoverEnabled.addEventListener('change', save);
   els.includeNonBlank.addEventListener('change', save);
   els.list.addEventListener('input', debouncedSave);
   els.hoverDelay.addEventListener('input', debouncedSave);
@@ -135,6 +172,36 @@ const init = async () => {
     await chrome.storage.sync.set({ slpSettings: next });
     render(next);
     flashSaved();
+  });
+
+  els.openSidePanel?.addEventListener('click', () => {
+    const origLabel = els.openSidePanel.textContent;
+    const failWith = (err) => {
+      console.warn('[SideLinkPreview] sidePanel.open:', err);
+      els.openSidePanel.textContent = t('open_side_panel_failed', 'Could not open — use toolbar icon');
+      setTimeout(() => {
+        els.openSidePanel.textContent = origLabel;
+      }, 2400);
+    };
+    if (ownWindowId == null) {
+      failWith(new Error('windowId not ready'));
+      return;
+    }
+    try {
+      const p = chrome.sidePanel.open({ windowId: ownWindowId });
+      if (p && typeof p.then === 'function') {
+        p.then(() => {
+          els.openSidePanel.textContent = t('side_panel_opened', 'Opened ✓');
+          els.openSidePanel.classList.add('ok');
+          setTimeout(() => {
+            els.openSidePanel.textContent = origLabel;
+            els.openSidePanel.classList.remove('ok');
+          }, 1800);
+        }).catch(failWith);
+      }
+    } catch (err) {
+      failWith(err);
+    }
   });
 };
 

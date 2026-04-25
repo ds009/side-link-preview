@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Side Link Preview — Arc-style split view, on stock Chrome</title>
+    <meta
+      name="description"
+      content="A free, open-source Chrome extension that opens links in the Side Panel. Arc-style and Edge-style side-by-side reading, on stock Chrome."
+    />
+    <meta name="theme-color" content="#2563eb" />
+
+    <!-- Open Graph / Twitter -->
+    <meta property="og:title" content="Side Link Preview" />
+    <meta
+      property="og:description"
+      content="Click a link, read it side-by-side. Arc-style split view for stock Chrome."
+    />
+    <meta
+      property="og:image"
+      content="https://ds009.github.io/side-link-preview/og.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ds009.github.io/side-link-preview/" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" type="image/png" href="../icons/icon-128.png" />
+
+    <style>
+      :root {
+        --fg: #0f172a;
+        --fg-muted: #475569;
+        --fg-subtle: #94a3b8;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --border: #e2e8f0;
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --primary-tint: #eff6ff;
+        --primary-tint-fg: #1e3a8a;
+        --heart: #db2777;
+        --heart-bg: #fdf2f8;
+        --heart-border: #fbcfe8;
+        --kbd-bg: #f1f5f9;
+        --kbd-fg: #334155;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #f1f5f9;
+          --fg-muted: #94a3b8;
+          --fg-subtle: #64748b;
+          --bg: #0b1220;
+          --card: #111a2e;
+          --border: #1e293b;
+          --primary: #60a5fa;
+          --primary-hover: #93c5fd;
+          --primary-tint: #172554;
+          --primary-tint-fg: #bfdbfe;
+          --heart: #f472b6;
+          --heart-bg: #2d1626;
+          --heart-border: #831843;
+          --kbd-bg: #1e293b;
+          --kbd-fg: #cbd5e1;
+        }
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          -apple-system,
+          BlinkMacSystemFont,
+          'Inter',
+          'Segoe UI',
+          'PingFang SC',
+          sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 56px 24px 80px;
+      }
+
+      /* ---------- Hero ---------- */
+      .hero {
+        text-align: center;
+        padding: 24px 0 12px;
+      }
+      .hero img.logo {
+        width: 88px;
+        height: 88px;
+        border-radius: 22px;
+        box-shadow: 0 12px 28px -10px rgba(37, 99, 235, 0.4);
+      }
+      .hero h1 {
+        font-size: clamp(34px, 5vw, 52px);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        margin: 22px 0 14px;
+        font-weight: 700;
+      }
+      .hero h1 .grad {
+        background: linear-gradient(90deg, #2563eb 0%, #db2777 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .hero p.lede {
+        font-size: 18px;
+        color: var(--fg-muted);
+        max-width: 640px;
+        margin: 0 auto 14px;
+      }
+      .hero p.subline {
+        font-size: 14px;
+        color: var(--fg-subtle);
+        margin: 0 0 28px;
+      }
+
+      .ctas {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 22px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 14px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s;
+      }
+      .btn:hover {
+        text-decoration: none;
+        transform: translateY(-1px);
+      }
+      .btn.primary {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 8px 18px -8px rgba(37, 99, 235, 0.55);
+      }
+      .btn.primary:hover {
+        background: var(--primary-hover);
+      }
+      .btn.secondary {
+        background: var(--card);
+        color: var(--fg);
+        border-color: var(--border);
+      }
+      .btn.secondary:hover {
+        background: var(--primary-tint);
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .btn.sponsor {
+        background: var(--heart-bg);
+        color: var(--heart);
+        border-color: var(--heart-border);
+      }
+      .btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .badges {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 12px;
+        font-size: 12.5px;
+        color: var(--fg-subtle);
+      }
+      .badges span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      /* ---------- Demo strip ---------- */
+      .demo {
+        margin: 56px 0 64px;
+        background: linear-gradient(
+          180deg,
+          var(--primary-tint) 0%,
+          var(--card) 100%
+        );
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 28px;
+        text-align: center;
+      }
+      .demo .placeholder {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        align-items: stretch;
+        height: 260px;
+      }
+      .demo .pane {
+        flex: 1;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px;
+        text-align: left;
+        font-size: 12px;
+        color: var(--fg-subtle);
+        line-height: 1.7;
+        overflow: hidden;
+        position: relative;
+      }
+      .demo .pane.left::before {
+        content: '';
+        display: block;
+        height: 8px;
+        width: 60%;
+        background: var(--border);
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+      .demo .pane.left::after {
+        content: '';
+        display: block;
+        height: 6px;
+        width: 88%;
+        background: var(--border);
+        border-radius: 3px;
+        margin-bottom: 6px;
+        box-shadow:
+          0 12px 0 var(--border),
+          0 24px 0 var(--border),
+          0 36px 0 var(--border);
+      }
+      .demo .pane.right {
+        background: var(--primary-tint);
+        border-color: var(--primary);
+        flex: 0 0 240px;
+      }
+      .demo .pane.right .label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--primary);
+        margin-bottom: 10px;
+      }
+      .demo .pane.right .url {
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 11px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 4px 6px;
+        margin-bottom: 10px;
+        color: var(--fg-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .demo .pane.right .body-line {
+        height: 6px;
+        background: var(--border);
+        border-radius: 3px;
+        margin-bottom: 6px;
+      }
+      .demo .pane.right .body-line.short {
+        width: 60%;
+      }
+      .demo .caption {
+        margin-top: 14px;
+        font-size: 13px;
+        color: var(--fg-muted);
+      }
+      .demo .caption code {
+        background: var(--kbd-bg);
+        color: var(--kbd-fg);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+
+      /* ---------- Features ---------- */
+      .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+        margin-bottom: 64px;
+      }
+      .feat {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px 22px;
+      }
+      .feat h3 {
+        margin: 0 0 6px;
+        font-size: 15px;
+      }
+      .feat p {
+        margin: 0;
+        font-size: 13.5px;
+        color: var(--fg-muted);
+      }
+      .feat .icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: var(--primary-tint);
+        color: var(--primary);
+        margin-bottom: 10px;
+        font-size: 18px;
+      }
+
+      /* ---------- How it works ---------- */
+      .how {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 28px 28px 24px;
+        margin-bottom: 64px;
+      }
+      .how h2 {
+        margin: 0 0 18px;
+        font-size: 22px;
+      }
+      .how ol {
+        margin: 0;
+        padding-left: 22px;
+        color: var(--fg-muted);
+        font-size: 14.5px;
+      }
+      .how ol li {
+        margin-bottom: 8px;
+      }
+      .how kbd {
+        display: inline-block;
+        padding: 1px 6px;
+        border: 1px solid var(--border);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        background: var(--kbd-bg);
+        color: var(--kbd-fg);
+        font-family: inherit;
+        font-size: 12px;
+      }
+
+      /* ---------- FAQ ---------- */
+      .faq {
+        margin-bottom: 64px;
+      }
+      .faq h2 {
+        font-size: 22px;
+        margin-bottom: 18px;
+      }
+      .faq details {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-bottom: 8px;
+      }
+      .faq summary {
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .faq summary::-webkit-details-marker {
+        display: none;
+      }
+      .faq summary::before {
+        content: '+';
+        display: inline-block;
+        width: 16px;
+        margin-right: 4px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      .faq details[open] summary::before {
+        content: '−';
+      }
+      .faq p {
+        margin: 10px 0 4px;
+        color: var(--fg-muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      /* ---------- Footer ---------- */
+      footer {
+        text-align: center;
+        font-size: 13px;
+        color: var(--fg-subtle);
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+      }
+      footer .links {
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <!-- ============= Hero ============= -->
+      <section class="hero">
+        <img class="logo" src="../icons/icon-128.png" alt="Side Link Preview" />
+        <h1>
+          Click a link.<br />
+          Read it <span class="grad">side-by-side.</span>
+        </h1>
+        <p class="lede">
+          Side Link Preview opens every <code>target="_blank"</code> link inside
+          Chrome's Side Panel — an Arc-style split view and Edge-style side-by-side
+          reading experience, built for stock Chrome.
+        </p>
+        <p class="subline">
+          Free · Open source (MIT) · No tracking · No ads
+        </p>
+
+        <div class="ctas">
+          <!-- TODO: replace href with the real CWS URL once approved -->
+          <a
+            class="btn primary"
+            href="https://chromewebstore.google.com/detail/REPLACE_WITH_EXTENSION_ID"
+            target="_blank"
+            rel="noopener"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4a4 4 0 110 8 4 4 0 010-8zm-7.7 9.3a8 8 0 0115.4 0A8 8 0 014.3 15.3z"
+              />
+            </svg>
+            Add to Chrome — Free
+          </a>
+          <a
+            class="btn secondary"
+            href="https://github.com/ds009/side-link-preview"
+            target="_blank"
+            rel="noopener"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2c-3.2.7-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.69 1.24 3.34.95.1-.74.4-1.24.72-1.53-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18a10.94 10.94 0 015.74 0c2.19-1.49 3.15-1.18 3.15-1.18.62 1.58.23 2.75.11 3.04.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.4-5.25 5.68.41.36.78 1.06.78 2.13v3.16c0 .31.21.68.8.56C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"
+              />
+            </svg>
+            View on GitHub
+          </a>
+          <a
+            class="btn sponsor"
+            href="https://github.com/sponsors/ds009"
+            target="_blank"
+            rel="noopener"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 21s-7-4.35-9.5-8.5C.5 8.5 3 4 7 4c2 0 3.5 1 5 3 1.5-2 3-3 5-3 4 0 6.5 4.5 4.5 8.5C19 16.65 12 21 12 21z" />
+            </svg>
+            Sponsor
+          </a>
+        </div>
+
+        <div class="badges">
+          <span>★ MIT-licensed</span>
+          <span>· Chrome 119+</span>
+          <span>· Works on Edge</span>
+          <span>· 6 languages</span>
+        </div>
+      </section>
+
+      <!-- ============= Demo placeholder ============= -->
+      <section class="demo" aria-label="What it looks like">
+        <div class="placeholder">
+          <div class="pane left">
+            <!-- decorative skeleton lines drawn via ::before / ::after -->
+          </div>
+          <div class="pane right">
+            <div class="label">Side Panel</div>
+            <div class="url">https://example.com/article</div>
+            <div class="body-line"></div>
+            <div class="body-line short"></div>
+            <div class="body-line"></div>
+            <div class="body-line"></div>
+            <div class="body-line short"></div>
+            <div class="body-line"></div>
+          </div>
+        </div>
+        <p class="caption">
+          The link you click loads in the Side Panel on the right while you keep
+          reading on the left. Hold <code>⌘</code> / <code>Ctrl</code> /
+          <code>Shift</code> / <code>Alt</code> to fall back to a real new tab.
+        </p>
+      </section>
+
+      <!-- ============= Features ============= -->
+      <section class="features">
+        <div class="feat">
+          <div class="icon" aria-hidden="true">↗</div>
+          <h3>Side-by-side, always</h3>
+          <p>
+            Outgoing links open in Chrome's Side Panel. Keep your tab on the
+            left, the linked page on the right.
+          </p>
+        </div>
+        <div class="feat">
+          <div class="icon" aria-hidden="true">⌘</div>
+          <h3>Modifier-key bypass</h3>
+          <p>
+            Hold ⌘ / Ctrl / Shift / Alt to skip the panel and get a regular new
+            tab — no friction, no fight.
+          </p>
+        </div>
+        <div class="feat">
+          <div class="icon" aria-hidden="true">⌨</div>
+          <h3>Keyboard + right-click</h3>
+          <p>
+            Preview the current tab with <kbd>Alt+Shift+P</kbd>, or right-click
+            any link → "Open in Side Panel".
+          </p>
+        </div>
+        <div class="feat">
+          <div class="icon" aria-hidden="true">🛡</div>
+          <h3>Privacy by default</h3>
+          <p>
+            No analytics, no tracking, no data ever leaves your browser.
+            Excludes sign-in, SSO and payment hosts.
+          </p>
+        </div>
+        <div class="feat">
+          <div class="icon" aria-hidden="true">🌗</div>
+          <h3>Light & dark</h3>
+          <p>
+            Follows your OS theme automatically. UI in English, 中文, Français,
+            Español, Deutsch, Português.
+          </p>
+        </div>
+        <div class="feat">
+          <div class="icon" aria-hidden="true">⚙</div>
+          <h3>Per-domain rules</h3>
+          <p>
+            Blacklist or whitelist mode, wildcards supported. Subdomains
+            matched automatically.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============= How it works ============= -->
+      <section class="how">
+        <h2>How it works</h2>
+        <ol>
+          <li>
+            Install from the Chrome Web Store (or load unpacked from GitHub).
+          </li>
+          <li>
+            Click any <code>target="_blank"</code> link on any site — the page
+            loads in the right-hand Side Panel.
+          </li>
+          <li>
+            Click the <strong>pin</strong> icon at the top-right of the Side
+            Panel so it stays open while you switch tabs.
+          </li>
+          <li>
+            Open <em>Settings</em> to switch trigger mode, language, scope, and
+            more.
+          </li>
+        </ol>
+      </section>
+
+      <!-- ============= FAQ ============= -->
+      <section class="faq">
+        <h2>Questions</h2>
+
+        <details>
+          <summary>Is it free? Forever?</summary>
+          <p>
+            Yes. The current feature set is permanently free, MIT-licensed, and
+            ad-free. If a paid Pro tier is ever added, all current features
+            stay free.
+          </p>
+        </details>
+
+        <details>
+          <summary>Does it work on Microsoft Edge?</summary>
+          <p>
+            Yes. Edge 119+ ships the same Side Panel API; the extension installs
+            and runs the same way.
+          </p>
+        </details>
+
+        <details>
+          <summary>What data does the extension collect?</summary>
+          <p>
+            None. No analytics, no telemetry, no tracking. Settings stay in
+            your Chrome profile via <code>storage.sync</code>. See the
+            <a
+              href="https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md"
+              target="_blank"
+              rel="noopener"
+              >Privacy Policy</a
+            >.
+          </p>
+        </details>
+
+        <details>
+          <summary>Why does some site fail to load in the panel?</summary>
+          <p>
+            A few sites enforce strict <code>frame-ancestors</code> or detect
+            iframe embedding via JavaScript. When that happens you'll see a
+            fallback card with an "Open in new tab" button — one click, you're
+            on the original tab.
+          </p>
+        </details>
+
+        <details>
+          <summary>Is it affiliated with Arc or Edge?</summary>
+          <p>
+            No. "Arc" and "Edge" are referenced descriptively to explain the
+            split-view interaction model. Side Link Preview is not affiliated
+            with The Browser Company or Microsoft.
+          </p>
+        </details>
+      </section>
+
+      <!-- ============= Footer ============= -->
+      <footer>
+        <div class="links">
+          <a
+            href="https://github.com/ds009/side-link-preview"
+            target="_blank"
+            rel="noopener"
+            >GitHub</a
+          >
+          <a
+            href="https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md"
+            target="_blank"
+            rel="noopener"
+            >Privacy</a
+          >
+          <a
+            href="https://github.com/ds009/side-link-preview/issues"
+            target="_blank"
+            rel="noopener"
+            >Support</a
+          >
+          <a
+            href="https://github.com/sponsors/ds009"
+            target="_blank"
+            rel="noopener"
+            >Sponsor</a
+          >
+        </div>
+        <div>
+          © 2026 ds009 · MIT License · Built for stock Chrome &amp; Edge.
+        </div>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -1,44 +1,40 @@
 {
   "app_name": "Side Link Preview",
   "header_subtitle": "Les modifications sont enregistrées automatiquement. Rechargez la page pour qu'elles prennent effet.",
-
   "section_language": "Langue",
   "language_hint": "Langue de la page de paramètres et de l'interface du panneau latéral.",
-
   "section_scope": "Portée",
   "scope_hint_html": "Un domaine par ligne. Les sous-domaines sont reconnus automatiquement — saisir <code>example.com</code> correspond aussi à <code>www.example.com</code> et <code>blog.example.com</code>. Le caractère générique <code>*</code> est pris en charge (ex. <code>*motclé*</code> correspond à tout domaine contenant <code>motclé</code>).",
   "mode_blacklist": "Liste noire (activé sauf pour les sites de la liste)",
   "mode_whitelist": "Liste blanche (activé uniquement sur les sites de la liste)",
   "scope_placeholder": "example.com\n*motclé*",
-
   "section_trigger": "Déclencheur",
-  "trigger_hint": "Clic : ouvrir le lien dans le panneau latéral au clic. Survol : aperçu automatique après avoir survolé plus longtemps que le délai.",
-  "trigger_click": "Ouvrir au clic",
-  "trigger_hover": "Ouvrir au survol",
+  "trigger_hint": "Un clic sur un lien l'ouvre toujours dans le panneau latéral. Activez l'option ci-dessous pour obtenir aussi un aperçu automatique lorsque vous survolez un lien plus longtemps que le délai.",
+  "trigger_hover_label": "Aperçu aussi au survol",
   "hover_delay_label": "Délai de survol",
   "hover_delay_unit": "ms",
-  "hover_note": "L'aperçu au survol nécessite que le panneau latéral soit déjà ouvert. La première fois, cliquez sur l'icône du panneau latéral ou sur l'icône de l'extension pour l'ouvrir.",
-  "trigger_click_note_html": "Vous voulez qu'un lien <strong>ignore</strong> le panneau latéral ? Maintenez <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> en cliquant — il s'ouvrira dans un nouvel onglet comme d'habitude. Pour ignorer un site entier, ajoutez son domaine dans <em>Portée</em> ci-dessus.",
-
+  "hover_note": "L'aperçu au survol nécessite que le panneau latéral soit déjà ouvert. Cliquez sur le bouton ci-dessous pour l'ouvrir — il suffit de le faire une seule fois par fenêtre.",
+  "open_side_panel_btn": "Ouvrir le panneau latéral",
+  "side_panel_opened": "Ouvert ✓",
+  "open_side_panel_failed": "Impossible — utilisez l'icône de la barre d'outils",
+  "trigger_click_note_html": "Vous voulez qu'un lien <strong>ignore</strong> le panneau latéral ? Maintenez <kbd>⌘</kbd> / <kbd>Ctrl</kbd> pour un nouvel onglet, <kbd>⇧</kbd> pour une nouvelle fenêtre, ou <kbd>⌥</kbd> Option / <kbd>Alt</kbd> pour ouvrir dans l'onglet actuel. Pour ignorer un site entier, ajoutez son domaine dans <em>Portée</em> ci-dessus.",
   "section_link_scope": "Portée des liens",
   "link_scope_hint_html": "Par défaut, seuls les liens <code>target=\"_blank\"</code> (ouverture en nouvel onglet) sont interceptés. Activez l'option ci-dessous pour aussi envoyer les liens internes (non <code>_blank</code>) vers le panneau latéral.",
   "link_scope_include_nonblank": "Ouvrir aussi les liens non-_blank dans le panneau latéral",
-
   "saved": "Enregistré",
   "save_failed": "Échec de l'enregistrement : ",
   "reset_btn": "Réinitialiser",
   "reset_btn_title": "Restaurer les paramètres par défaut",
   "reset_confirm": "Rétablir les paramètres par défaut ? La liste de domaines sera effacée.",
-
   "addr_placeholder": "URL",
   "btn_go": "Aller",
   "btn_go_title": "Charger",
   "btn_pop_title": "Ouvrir dans un nouvel onglet",
   "btn_settings_title": "Paramètres",
-
   "sidepanel_welcome_title": "Tout est prêt.",
   "sidepanel_welcome_body": "Cliquez sur un lien à gauche : il s'ouvre ici, côte à côte.",
-  "sidepanel_welcome_bypass_html": "Maintenez <kbd>⌘</kbd> / <kbd>Ctrl</kbd> en cliquant pour ouvrir dans un nouvel onglet.",
+  "sidepanel_welcome_pin_html": "Astuce : cliquez sur l'icône <strong>épingle</strong> en haut à droite du panneau pour qu'il reste ouvert quand vous changez d'onglet.",
+  "sidepanel_welcome_bypass_html": "Maintenez <kbd>⌘</kbd> / <kbd>Ctrl</kbd> pour ouvrir un nouvel onglet, ou <kbd>⌥</kbd> Option / <kbd>Alt</kbd> pour ouvrir dans l'onglet actuel — les deux contournent le panneau latéral.",
   "sidepanel_open_settings": "Ouvrir les paramètres",
   "sponsor_cta": "Sponsoriser sur GitHub",
   "sidepanel_blocked_title": "Impossible de prévisualiser",
@@ -46,5 +42,7 @@
   "sidepanel_blocked_note": "Cette restriction est définie par le site lui-même, pas par l'extension.",
   "sidepanel_blocked_open": "Ouvrir dans un nouvel onglet",
   "sidepanel_blocked_copy": "Copier le lien",
-  "sidepanel_blocked_copied": "Copié"
+  "sidepanel_blocked_copied": "Copié",
+  "context_menu_open_in_side_panel": "Ouvrir le lien dans le panneau latéral",
+  "storage_quota_warning": "La liste des domaines dépasse la limite de stockage synchronisé de Chrome. Veuillez la raccourcir."
 }

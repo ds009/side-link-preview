@@ -1,44 +1,40 @@
 {
   "app_name": "Side Link Preview",
   "header_subtitle": "Los cambios se guardan automáticamente. Recarga la página para que surtan efecto.",
-
   "section_language": "Idioma",
   "language_hint": "Idioma de la página de ajustes y de la interfaz del panel lateral.",
-
   "section_scope": "Ámbito",
   "scope_hint_html": "Un dominio por línea. Los subdominios coinciden automáticamente — <code>example.com</code> también coincide con <code>www.example.com</code> y <code>blog.example.com</code>. Se admite el comodín <code>*</code> (p. ej. <code>*palabra*</code> coincide con cualquier dominio que contenga <code>palabra</code>).",
   "mode_blacklist": "Lista negra (activa salvo en los sitios de la lista)",
   "mode_whitelist": "Lista blanca (activa solo en los sitios de la lista)",
   "scope_placeholder": "example.com\n*palabra*",
-
   "section_trigger": "Activación",
-  "trigger_hint": "Clic: abrir el enlace en el panel lateral al hacer clic. Hover: vista previa automática al pasar el ratón más tiempo que el retardo configurado.",
-  "trigger_click": "Abrir con clic",
-  "trigger_hover": "Abrir al pasar el ratón",
+  "trigger_hint": "Hacer clic en un enlace siempre lo abre en el panel lateral. Activa la opción de abajo para obtener además una vista previa automática al pasar el ratón sobre un enlace más tiempo que el retardo.",
+  "trigger_hover_label": "Vista previa también al pasar el ratón",
   "hover_delay_label": "Retardo de hover",
   "hover_delay_unit": "ms",
-  "hover_note": "La vista previa al pasar el ratón requiere que el panel lateral ya esté abierto. La primera vez, haz clic en el icono del panel lateral o en el icono de la extensión para abrirlo.",
-  "trigger_click_note_html": "¿Quieres que un enlace <strong>se salte</strong> el panel lateral? Mantén <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> al hacer clic — se abrirá en una nueva pestaña como siempre. Para saltar un sitio entero, añade su dominio en <em>Ámbito</em> arriba.",
-
+  "hover_note": "La vista previa al pasar el ratón requiere que el panel lateral ya esté abierto. Haz clic en el botón de abajo para abrirlo ahora — solo hace falta una vez por ventana.",
+  "open_side_panel_btn": "Abrir el panel lateral ahora",
+  "side_panel_opened": "Abierto ✓",
+  "open_side_panel_failed": "No se pudo abrir — usa el icono de la barra",
+  "trigger_click_note_html": "¿Quieres que un enlace <strong>se salte</strong> el panel lateral? Mantén <kbd>⌘</kbd> / <kbd>Ctrl</kbd> para una nueva pestaña, <kbd>⇧</kbd> para una nueva ventana, o <kbd>⌥</kbd> Option / <kbd>Alt</kbd> para abrir en la pestaña actual. Para saltar un sitio entero, añade su dominio en <em>Ámbito</em> arriba.",
   "section_link_scope": "Alcance de enlaces",
   "link_scope_hint_html": "Por defecto solo se interceptan los enlaces <code>target=\"_blank\"</code> (apertura en nueva pestaña). Activa la opción de abajo para enviar también los enlaces internos (no <code>_blank</code>) al panel lateral.",
   "link_scope_include_nonblank": "Abrir también los enlaces no-_blank en el panel lateral",
-
   "saved": "Guardado",
   "save_failed": "Error al guardar: ",
   "reset_btn": "Restablecer",
   "reset_btn_title": "Restaurar la configuración predeterminada",
   "reset_confirm": "¿Restablecer valores predeterminados? La lista de dominios se borrará.",
-
   "addr_placeholder": "URL",
   "btn_go": "Ir",
   "btn_go_title": "Cargar",
   "btn_pop_title": "Abrir en una nueva pestaña",
   "btn_settings_title": "Ajustes",
-
   "sidepanel_welcome_title": "Todo listo.",
   "sidepanel_welcome_body": "Haz clic en cualquier enlace de la izquierda y se abrirá aquí, en paralelo.",
-  "sidepanel_welcome_bypass_html": "Mantén <kbd>⌘</kbd> / <kbd>Ctrl</kbd> al hacer clic para abrirlo en una nueva pestaña.",
+  "sidepanel_welcome_pin_html": "Consejo: haz clic en el icono de <strong>fijar</strong> en la esquina superior derecha del panel para que siga abierto al cambiar de pestaña.",
+  "sidepanel_welcome_bypass_html": "Mantén <kbd>⌘</kbd> / <kbd>Ctrl</kbd> para abrir en una nueva pestaña, o <kbd>⌥</kbd> Option / <kbd>Alt</kbd> para abrir en la pestaña actual — ambos omiten el panel lateral.",
   "sidepanel_open_settings": "Abrir ajustes",
   "sponsor_cta": "Patrocinar en GitHub",
   "sidepanel_blocked_title": "No se puede previsualizar",
@@ -46,5 +42,7 @@
   "sidepanel_blocked_note": "Esta restricción la establece el propio sitio, no la extensión.",
   "sidepanel_blocked_open": "Abrir en nueva pestaña",
   "sidepanel_blocked_copy": "Copiar enlace",
-  "sidepanel_blocked_copied": "Copiado"
+  "sidepanel_blocked_copied": "Copiado",
+  "context_menu_open_in_side_panel": "Abrir enlace en el panel lateral",
+  "storage_quota_warning": "La lista de dominios supera el límite de almacenamiento sincronizado de Chrome. Por favor, acórtala."
 }

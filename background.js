@@ -1,7 +1,8 @@
 const DNR_RULE_ID = 1;
 
-// 只对 Side Panel（扩展自身）里发起的 iframe 请求抹掉 X-Frame-Options / CSP。
-// 这样普通浏览任何网站时，原站的安全策略完全不受影响。
+// Strip X-Frame-Options / CSP headers only on iframe requests whose initiator
+// is this extension (i.e. the Side Panel). Regular browsing on any site is
+// therefore untouched — no other request on the device is affected.
 const ensureDnrRule = async () => {
   try {
     await chrome.declarativeNetRequest.updateDynamicRules({
@@ -19,6 +20,7 @@ const ensureDnrRule = async () => {
                 header: 'content-security-policy-report-only',
                 operation: 'remove',
               },
+              { header: 'x-webkit-csp', operation: 'remove' },
             ],
           },
           condition: {
@@ -33,18 +35,151 @@ const ensureDnrRule = async () => {
   }
 };
 
+// ---------- Context menu ----------
+// "Open link in Side Panel" — a one-shot, user-initiated bypass of the
+// blacklist / link-scope rules. Shown only on link targets.
+const CONTEXT_MENU_ID = 'slp-open-link-in-side-panel';
+const SUPPORTED_LOCALES = ['en', 'zh', 'fr', 'es', 'de', 'pt'];
+
+const pickLocale = (saved) => {
+  if (saved && SUPPORTED_LOCALES.includes(saved)) return saved;
+  // navigator.languages isn't available inside a service worker; chrome.i18n
+  // gives us a reasonable default. Fall back to English on any failure.
+  try {
+    const lang = (chrome.i18n.getUILanguage() || 'en').toLowerCase();
+    const base = lang.split('-')[0];
+    if (SUPPORTED_LOCALES.includes(base)) return base;
+  } catch (_) {}
+  return 'en';
+};
+
+const getContextMenuTitle = async () => {
+  let locale = 'en';
+  try {
+    const data = await chrome.storage.sync.get('slpSettings');
+    locale = pickLocale(data?.slpSettings?.locale);
+  } catch (_) {
+    locale = pickLocale(null);
+  }
+  try {
+    const res = await fetch(chrome.runtime.getURL(`locales/${locale}.json`));
+    const dict = await res.json();
+    return dict.context_menu_open_in_side_panel || 'Open link in Side Panel';
+  } catch (_) {
+    return 'Open link in Side Panel';
+  }
+};
+
+const ensureContextMenu = async () => {
+  try {
+    const title = await getContextMenuTitle();
+    chrome.contextMenus.removeAll(() => {
+      // Swallow any lastError from removeAll itself.
+      void chrome.runtime.lastError;
+      chrome.contextMenus.create(
+        {
+          id: CONTEXT_MENU_ID,
+          title,
+          contexts: ['link'],
+        },
+        () => {
+          // Duplicate-id races can happen when onInstalled + onStartup +
+          // top-level ensure all fire in close succession. Ignore.
+          void chrome.runtime.lastError;
+        },
+      );
+    });
+  } catch (err) {
+    console.warn('[SideLinkPreview] contextMenu register failed:', err);
+  }
+};
+
+// Refresh the context-menu label when the user switches UI language.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'sync') return;
+  if (!changes.slpSettings) return;
+  const before = changes.slpSettings.oldValue?.locale;
+  const after = changes.slpSettings.newValue?.locale;
+  if (before !== after) ensureContextMenu();
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel
     .setPanelBehavior({ openPanelOnActionClick: true })
     .catch((err) => console.warn('[SideLinkPreview] setPanelBehavior:', err));
   ensureDnrRule();
+  ensureContextMenu();
 });
 
-// service worker 冷启动时也要注册一次（onInstalled 不会每次触发）
+// Re-register on service-worker cold start too (onInstalled does not fire every time).
 chrome.runtime.onStartup.addListener(() => {
   ensureDnrRule();
+  ensureContextMenu();
 });
 ensureDnrRule();
+ensureContextMenu();
+
+const isHttpUrl = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
+
+// Push a concrete URL into the current tab's Side Panel. Mirrors the open
+// logic used in the onMessage branch below.
+const openUrlInSidePanel = async (url, tab) => {
+  if (!isHttpUrl(url) || !tab?.id || !tab?.windowId) return;
+  const tabId = tab.id;
+  const windowId = tab.windowId;
+  try {
+    await chrome.storage.session.set({ [`sp_url_${tabId}`]: url });
+    await chrome.sidePanel.setOptions({
+      tabId,
+      path: `sidepanel.html?tabId=${tabId}`,
+      enabled: true,
+    });
+    // Note: this path runs inside a user gesture (keyboard shortcut or
+    // context-menu click), so sidePanel.open() will actually succeed.
+    await chrome.sidePanel.open({ tabId, windowId });
+  } catch (err) {
+    console.warn('[SideLinkPreview] openUrlInSidePanel:', err);
+  }
+};
+
+chrome.contextMenus?.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== CONTEXT_MENU_ID) return;
+  const url = info.linkUrl || info.pageUrl;
+  openUrlInSidePanel(url, tab);
+});
+
+// ---------- Keyboard shortcut ----------
+// Alt+Shift+P → preview the current tab's URL in the Side Panel, enabling a
+// quick "mirror this page to the right and keep reading" workflow.
+chrome.commands?.onCommand.addListener(async (command) => {
+  if (command !== 'toggle-side-panel') return;
+  try {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    if (!tab) return;
+    const url = tab.url || tab.pendingUrl;
+    if (!isHttpUrl(url)) return;
+    openUrlInSidePanel(url, tab);
+  } catch (err) {
+    console.warn('[SideLinkPreview] command toggle-side-panel:', err);
+  }
+});
+
+// ---------- action.onClicked fallback ----------
+// setPanelBehavior({ openPanelOnActionClick: true }) occasionally fails on
+// older Chrome versions, under enterprise policy, or when the toolbar icon is
+// hidden. Add an explicit onClicked handler to force-open the Side Panel when
+// the toolbar icon is clicked.
+chrome.action?.onClicked.addListener(async (tab) => {
+  if (!tab?.id || !tab?.windowId) return;
+  try {
+    await chrome.sidePanel.open({ tabId: tab.id, windowId: tab.windowId });
+  } catch (err) {
+    console.warn('[SideLinkPreview] action.onClicked:', err);
+  }
+});
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type !== 'OPEN_IN_SIDE_PANEL') return;
@@ -56,8 +191,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return;
   }
 
-  // 关键：不能 await。chrome.sidePanel.open() 必须在 onMessage 回调的
-  // 同步调用栈里触发，否则 Chrome 会判定用户手势已过期而静默失败。
+  // Critical: do NOT await. chrome.sidePanel.open() must be called inside the
+  // synchronous onMessage call stack, otherwise Chrome considers the user
+  // gesture expired and silently drops the call.
   chrome.storage.session
     .set({ [`sp_url_${tabId}`]: msg.url })
     .catch((err) => console.warn('[SideLinkPreview] storage.set:', err));
@@ -70,9 +206,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })
     .catch((err) => console.warn('[SideLinkPreview] setOptions:', err));
 
-  // Hover 触发不是用户手势，sidePanel.open() 会被 Chrome 拒绝。此时仅更新
-  // storage；若 Side Panel 已处于打开状态，sidepanel.js 监听 storage 变化
-  // 会自动刷新为新 URL。
+  // Hover isn't a user gesture, so Chrome rejects sidePanel.open(). Only
+  // update storage here; if the Side Panel is already open, sidepanel.js
+  // watches storage and will navigate to the new URL automatically.
   if (msg.trigger === 'hover') {
     sendResponse({ ok: true, hover: true });
     return;
@@ -93,9 +229,10 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove(`sp_url_${tabId}`).catch(() => {});
 });
 
-// ---------- 系统页面禁用 Side Panel ----------
-// chrome://、chrome-extension://、devtools://、view-source:、about: 等页面上
-// 隐藏本扩展的 Side Panel，避免从普通 tab 切过去时仍然残留着。
+// ---------- Disable Side Panel on system pages ----------
+// Hide this extension's Side Panel on chrome://, chrome-extension://,
+// devtools://, view-source:, about: and similar internal pages so it doesn't
+// linger when switching to them from a regular tab.
 const SYSTEM_URL_RE =
   /^(chrome|chrome-extension|chrome-search|chrome-untrusted|edge|devtools|view-source|about):/i;
 

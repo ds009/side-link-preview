@@ -13,11 +13,13 @@ const popBtn = document.getElementById('pop');
 const settingsBtn = document.getElementById('settings');
 const openSettingsBtn = document.getElementById('open-settings');
 
-// 判定 iframe 是否被目标站拒绝加载的超时时间。
-// content.js 在成功进入 iframe 后会立刻 postMessage 一次 LOADED ping；
-// 在这个时间内没收到就视为被 XFO/CSP 拦掉（我们只对 Side Panel 自身发起的
-// 请求剥 XFO/CSP 头，但部分场景仍会失败，例如站点用 JS 检测 iframe、
-// 子资源加载失败、或被剥头后仍无法渲染）。
+// Timeout after which we assume the iframe was rejected by the target site.
+// content.js posts a LOADED ping as soon as it enters the iframe; if none
+// arrives within this window we treat the load as blocked by XFO/CSP. The DNR
+// rule only strips headers for requests this Side Panel itself initiated, but
+// some cases still fail — e.g. the site uses JS to detect iframes, a child
+// resource fails to load, or the page still refuses to render after header
+// stripping.
 const BLOCK_TIMEOUT_MS = 4000;
 
 let loadToken = 0;
@@ -47,7 +49,7 @@ const load = (url) => {
 
   clearBlockTimer();
   blockTimer = setTimeout(() => {
-    if (myToken !== loadToken) return; // 已被更新的 load 取代
+    if (myToken !== loadToken) return; // Superseded by a newer load().
     showBlockedTip();
   }, BLOCK_TIMEOUT_MS);
 };
@@ -113,8 +115,8 @@ const openOptions = () => {
 settingsBtn?.addEventListener('click', openOptions);
 openSettingsBtn?.addEventListener('click', openOptions);
 
-// 如果 background 调 setOptions 还没生效就 open 了，URL 里会缺 tabId，
-// 这里兜底去查当前 active tab。
+// If background opens the panel before setOptions takes effect, the URL may
+// not carry a tabId. Fall back to querying the currently active tab.
 const resolveTabId = async () => {
   if (tabId) return tabId;
   try {
@@ -149,19 +151,35 @@ chrome.storage.session.onChanged.addListener(async (changes) => {
   }
 });
 
-// 监听 Side Panel 内 iframe（以及嵌套 iframe）里 content.js 发来的消息。
+// Listen for messages posted by content.js running inside the Side Panel's
+// iframe (and any nested iframes). Accept only messages whose source belongs
+// to our own frame tree, so third-party scripts can't forge a NAVIGATE event
+// and redirect the panel to an arbitrary URL. Cross-origin Window objects
+// still expose `.top` as a readable structural property — if source.top
+// equals this sidepanel's window, we consider the origin trusted.
+const isFromOurFrameTree = (source) => {
+  if (!source || source === window) return false;
+  try {
+    return source.top === window;
+  } catch (_) {
+    return false;
+  }
+};
+
+const isSafeUrl = (url) =>
+  typeof url === 'string' && /^https?:\/\//i.test(url);
+
 window.addEventListener('message', (e) => {
+  if (!isFromOurFrameTree(e.source)) return;
   const data = e.data;
   if (!data || data.__slp !== 1) return;
 
   if (data.type === 'LOADED') {
-    // 目标站已成功执行到我们的 content.js，说明没被 XFO/CSP 拦掉，
-    // 取消"疑似被拦截"的定时器。
     clearBlockTimer();
     return;
   }
 
-  if (data.type === 'NAVIGATE' && typeof data.url === 'string') {
+  if (data.type === 'NAVIGATE' && isSafeUrl(data.url)) {
     if (data.url !== currentUrl) load(data.url);
   }
 });

@@ -10,11 +10,56 @@
         --fg-subtle: #9ca3af;
         --bg: #f3f4f6;
         --card: #ffffff;
+        --card-alt: #fafafa;
         --border: #e5e7eb;
         --border-strong: #d1d5db;
         --primary: #2563eb;
         --primary-hover: #1d4ed8;
+        --primary-tint: #eff6ff;
+        --primary-tint-border: #bfdbfe;
+        --primary-tint-fg: #1e3a8a;
         --success: #16a34a;
+        --warning-bg: #fffbeb;
+        --warning-border: #fde68a;
+        --warning-fg: #92400e;
+        --danger-bg: #fef2f2;
+        --danger-border: #fecaca;
+        --danger-fg: #991b1b;
+        --kbd-bg: #f9fafb;
+        --kbd-fg: #374151;
+        --heart: #db2777;
+        --heart-bg: #fdf2f8;
+        --heart-border: #fbcfe8;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #f3f4f6;
+          --fg-muted: #9ca3af;
+          --fg-subtle: #6b7280;
+          --bg: #111827;
+          --card: #1f2937;
+          --card-alt: #111827;
+          --border: #374151;
+          --border-strong: #4b5563;
+          --primary: #60a5fa;
+          --primary-hover: #93c5fd;
+          --primary-tint: #172554;
+          --primary-tint-border: #1e3a8a;
+          --primary-tint-fg: #bfdbfe;
+          --success: #34d399;
+          --warning-bg: #422006;
+          --warning-border: #713f12;
+          --warning-fg: #fcd34d;
+          --danger-bg: #450a0a;
+          --danger-border: #7f1d1d;
+          --danger-fg: #fca5a5;
+          --kbd-bg: #374151;
+          --kbd-fg: #e5e7eb;
+          --heart: #f472b6;
+          --heart-bg: #2d1626;
+          --heart-border: #831843;
+        }
       }
       * {
         box-sizing: border-box;
@@ -73,7 +118,7 @@
         font-size: 12.5px;
       }
       section .hint code {
-        background: #f3f4f6;
+        background: var(--bg);
         padding: 1px 5px;
         border-radius: 4px;
         font-size: 12px;
@@ -93,17 +138,18 @@
         border: 1px solid var(--border);
         border-radius: 8px;
         cursor: pointer;
-        background: #fff;
+        background: var(--card);
+        color: var(--fg);
         transition: all 0.15s;
         font-size: 13px;
       }
       .radio-group label:hover {
         border-color: var(--border-strong);
-        background: #fafafa;
+        background: var(--card-alt);
       }
       .radio-group label:has(input:checked) {
         border-color: var(--primary);
-        background: #eff6ff;
+        background: var(--primary-tint);
         color: var(--primary);
       }
       .radio-group input {
@@ -121,7 +167,7 @@
         font-size: 13px;
         line-height: 1.6;
         outline: none;
-        background: #fff;
+        background: var(--card);
         color: var(--fg);
       }
       textarea:focus {
@@ -148,6 +194,8 @@
         border-radius: 6px;
         font-size: 13px;
         outline: none;
+        background: var(--card);
+        color: var(--fg);
         font-variant-numeric: tabular-nums;
       }
       .inline input[type='number']:focus {
@@ -164,18 +212,19 @@
         padding: 10px 12px;
         border: 1px solid var(--border);
         border-radius: 8px;
-        background: #fff;
+        background: var(--card);
+        color: var(--fg);
         font-size: 13px;
         cursor: pointer;
         transition: all 0.15s;
       }
       .toggle:hover {
         border-color: var(--border-strong);
-        background: #fafafa;
+        background: var(--card-alt);
       }
       .toggle:has(input:checked) {
         border-color: var(--primary);
-        background: #eff6ff;
+        background: var(--primary-tint);
         color: var(--primary);
       }
       .toggle input {
@@ -186,9 +235,10 @@
         padding: 8px 28px 8px 12px;
         border: 1px solid var(--border);
         border-radius: 8px;
-        background: #fff
-          url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>")
-          no-repeat right 10px center;
+        background-color: var(--card);
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
         font-size: 13px;
         color: var(--fg);
         outline: none;
@@ -204,35 +254,60 @@
         margin-top: 12px;
         padding: 10px 12px;
         border-radius: 8px;
-        background: #fffbeb;
-        border: 1px solid #fde68a;
-        color: #92400e;
+        background: var(--warning-bg);
+        border: 1px solid var(--warning-border);
+        color: var(--warning-fg);
         font-size: 12.5px;
         line-height: 1.55;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
       }
       .callout.info {
-        background: #eff6ff;
-        border-color: #bfdbfe;
-        color: #1e3a8a;
+        background: var(--primary-tint);
+        border-color: var(--primary-tint-border);
+        color: var(--primary-tint-fg);
+      }
+      .callout-btn {
+        padding: 6px 14px;
+        border: 1px solid var(--warning-border);
+        background: var(--card);
+        color: var(--warning-fg);
+        border-radius: 6px;
+        font-size: 12.5px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .callout-btn:hover {
+        background: var(--warning-border);
+        color: var(--warning-fg);
+      }
+      .callout-btn.ok {
+        background: var(--success);
+        border-color: var(--success);
+        color: #fff;
+        cursor: default;
       }
       .callout kbd {
         display: inline-block;
         padding: 0 5px;
-        border: 1px solid #c7d2fe;
+        border: 1px solid var(--primary-tint-border);
         border-bottom-width: 2px;
         border-radius: 4px;
-        background: #fff;
+        background: var(--card);
         font-family: inherit;
         font-size: 11.5px;
-        color: #1e3a8a;
+        color: var(--primary-tint-fg);
       }
       .callout em {
         font-style: normal;
         padding: 1px 6px;
         border-radius: 4px;
-        background: #fff;
-        border: 1px solid #bfdbfe;
-        color: #1e3a8a;
+        background: var(--card);
+        border: 1px solid var(--primary-tint-border);
+        color: var(--primary-tint-fg);
         font-size: 11.5px;
       }
       footer {
@@ -252,14 +327,14 @@
       footer button {
         padding: 4px 10px;
         border: 1px solid var(--border-strong);
-        background: #fff;
+        background: var(--card);
         color: var(--fg);
         border-radius: 6px;
         cursor: pointer;
         font-size: 12.5px;
       }
       footer button:hover {
-        background: #f3f4f6;
+        background: var(--bg);
       }
       .credits {
         max-width: 680px;
@@ -277,20 +352,20 @@
         padding: 6px 12px;
         border-radius: 999px;
         border: 1px solid var(--border);
-        background: #fff;
+        background: var(--card);
         color: var(--fg-muted);
         text-decoration: none;
         transition: all 0.15s;
       }
       .credits a:hover {
-        color: #db2777;
-        border-color: #fbcfe8;
-        background: #fdf2f8;
+        color: var(--heart);
+        border-color: var(--heart-border);
+        background: var(--heart-bg);
       }
       .credits svg {
         width: 14px;
         height: 14px;
-        color: #db2777;
+        color: var(--heart);
       }
     </style>
   </head>
@@ -354,19 +429,16 @@
       <section>
         <h2 data-i18n="section_trigger">Trigger</h2>
         <p class="hint" data-i18n="trigger_hint">
-          Click: open the link in the side panel on click. Hover: automatic
-          preview after hovering longer than the delay.
+          Clicking a link always opens it in the side panel. Enable the toggle
+          below to additionally get a preview automatically when you hover a
+          link longer than the delay.
         </p>
-        <div class="radio-group">
-          <label>
-            <input type="radio" name="trigger" value="click" />
-            <span data-i18n="trigger_click">Click to open</span>
-          </label>
-          <label>
-            <input type="radio" name="trigger" value="hover" />
-            <span data-i18n="trigger_hover">Hover to open</span>
-          </label>
-        </div>
+        <label class="toggle">
+          <input type="checkbox" id="hoverEnabled" />
+          <span data-i18n="trigger_hover_label">
+            Also preview on hover
+          </span>
+        </label>
         <div class="inline" id="hoverDelayRow">
           <span data-i18n="hover_delay_label">Hover delay</span>
           <input
@@ -378,21 +450,31 @@
           />
           <span data-i18n="hover_delay_unit">ms</span>
         </div>
-        <div class="callout" id="hoverNote" data-i18n="hover_note" hidden>
-          Hover preview requires the side panel to already be open. The first
-          time, click the toolbar side-panel icon or the extension icon to open
-          it.
+        <div class="callout" id="hoverNote" hidden>
+          <span data-i18n="hover_note">
+            Hover preview requires the side panel to already be open. Click the
+            button below to open it now — you only need to do this once per
+            browser window.
+          </span>
+          <button
+            id="openSidePanel"
+            type="button"
+            class="callout-btn"
+            data-i18n="open_side_panel_btn"
+          >
+            Open side panel now
+          </button>
         </div>
         <div
           class="callout info"
           id="clickNote"
           data-i18n-html="trigger_click_note_html"
-          hidden
         >
           Want a link to <strong>skip</strong> the Side Panel? Hold
-          <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd>
-          while clicking — it will open in a new tab as usual. To always skip
-          a whole site, add its domain under <em>Scope</em> above.
+          <kbd>⌘</kbd> / <kbd>Ctrl</kbd> for a new tab, <kbd>⇧</kbd> for a new
+          window, or <kbd>⌥</kbd> Option / <kbd>Alt</kbd> to open in the
+          current tab. To always skip a whole site, add its domain under
+          <em>Scope</em> above.
         </div>
       </section>
 

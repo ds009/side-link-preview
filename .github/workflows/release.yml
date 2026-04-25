@@ -1,0 +1,65 @@
+name: Package and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from manifest
+        id: meta
+        run: |
+          VERSION=$(node -p "require('./manifest.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Sanity check — tag must match manifest version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          MF="${{ steps.meta.outputs.version }}"
+          if [ "$TAG" != "$MF" ]; then
+            echo "::error::Tag v$TAG does not match manifest version $MF"
+            exit 1
+          fi
+
+      - name: Validate JSON files
+        run: |
+          set -e
+          for f in manifest.json locales/*.json; do
+            echo "Checking $f"
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))"
+          done
+
+      - name: Build zip
+        run: |
+          mkdir -p dist
+          ZIP="dist/side-link-preview-${{ steps.meta.outputs.version }}.zip"
+          zip -r "$ZIP" \
+            manifest.json background.js content.js injected.js \
+            sidepanel.html sidepanel.js options.html options.js \
+            i18n.js locales icons PRIVACY.md LICENSE README.md \
+            -x "*.DS_Store" "icons/icon-square.png"
+          echo "zip=$ZIP" >> "$GITHUB_ENV"
+          ls -lh "$ZIP"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: side-link-preview-${{ steps.meta.outputs.version }}
+          path: ${{ env.zip }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.zip }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true

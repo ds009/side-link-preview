@@ -1,0 +1,50 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: |
+          set -e
+          for f in manifest.json locales/*.json; do
+            echo "Checking $f"
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))"
+          done
+
+      - name: Verify every locale has the same keys as en.json
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const en = JSON.parse(fs.readFileSync('locales/en.json','utf8'));
+          const enKeys = Object.keys(en).sort();
+          const files = fs.readdirSync('locales').filter(f => f.endsWith('.json') && f !== 'en.json');
+          let bad = 0;
+          for (const f of files) {
+            const d = JSON.parse(fs.readFileSync(`locales/${f}`,'utf8'));
+            const got = Object.keys(d).sort();
+            const missing = enKeys.filter(k => !got.includes(k));
+            const extra = got.filter(k => !enKeys.includes(k));
+            if (missing.length || extra.length) {
+              bad++;
+              console.error(`${f}: missing=${missing.join(',')} extra=${extra.join(',')}`);
+            } else {
+              console.log(`${f}: ok (${got.length} keys)`);
+            }
+          }
+          if (bad) process.exit(1);
+          EOF
+
+      - name: Verify icons present
+        run: |
+          for s in 16 32 48 128; do
+            test -f "icons/icon-${s}.png" || { echo "missing icons/icon-${s}.png"; exit 1; }
+          done
+          echo "all icons present"

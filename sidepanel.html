@@ -4,43 +4,98 @@
     <meta charset="utf-8" />
     <title>Side Link Preview</title>
     <style>
+      :root {
+        --fg: #111827;
+        --fg-muted: #6b7280;
+        --fg-subtle: #9ca3af;
+        --bg: #fafafa;
+        --card: #ffffff;
+        --card-alt: #f3f4f6;
+        --border: #e5e7eb;
+        --border-strong: #d1d5db;
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --primary-border: #3b82f6;
+        --primary-tint: #eff6ff;
+        --primary-tint-border: #bfdbfe;
+        --primary-tint-fg: #1e3a8a;
+        --code-bg: #f3f4f6;
+        --kbd-bg: #f9fafb;
+        --kbd-fg: #374151;
+        --success-fg: #16a34a;
+        --success-bg: #f0fdf4;
+        --success-border: #bbf7d0;
+        --icon-bg: #fef3c7;
+        --icon-fg: #b45309;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #f3f4f6;
+          --fg-muted: #9ca3af;
+          --fg-subtle: #6b7280;
+          --bg: #0f172a;
+          --card: #1f2937;
+          --card-alt: #374151;
+          --border: #374151;
+          --border-strong: #4b5563;
+          --primary: #60a5fa;
+          --primary-hover: #93c5fd;
+          --primary-border: #60a5fa;
+          --primary-tint: #172554;
+          --primary-tint-border: #1e3a8a;
+          --primary-tint-fg: #bfdbfe;
+          --code-bg: #374151;
+          --kbd-bg: #374151;
+          --kbd-fg: #e5e7eb;
+          --success-fg: #34d399;
+          --success-bg: #064e3b;
+          --success-border: #065f46;
+          --icon-bg: #422006;
+          --icon-fg: #fcd34d;
+        }
+      }
       html, body {
         margin: 0;
         height: 100%;
+        overflow: hidden;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #fafafa;
+        background: var(--bg);
+        color: var(--fg);
       }
       .bar {
         display: flex;
         gap: 6px;
         padding: 6px 8px;
-        border-bottom: 1px solid #e5e7eb;
-        background: #fff;
+        border-bottom: 1px solid var(--border);
+        background: var(--card);
         box-sizing: border-box;
         height: 40px;
       }
       .bar input {
         flex: 1;
         padding: 4px 8px;
-        border: 1px solid #d1d5db;
+        border: 1px solid var(--border-strong);
         border-radius: 6px;
         font-size: 12px;
         outline: none;
+        background: var(--card);
+        color: var(--fg);
       }
       .bar input:focus {
-        border-color: #3b82f6;
+        border-color: var(--primary-border);
       }
       .bar button {
-        border: 1px solid #d1d5db;
-        background: #fff;
+        border: 1px solid var(--border-strong);
+        background: var(--card);
         border-radius: 6px;
         padding: 2px 10px;
         cursor: pointer;
         font-size: 12px;
-        color: #374151;
+        color: var(--kbd-fg);
       }
       .bar button:hover {
-        background: #f3f4f6;
+        background: var(--card-alt);
       }
       .frame-wrap {
         width: 100%;
@@ -48,10 +103,11 @@
         position: relative;
       }
       iframe {
+        display: block;
         width: 100%;
         height: 100%;
         border: 0;
-        background: #fff;
+        background: var(--card);
       }
       .tip {
         position: absolute;
@@ -62,7 +118,7 @@
         justify-content: center;
         padding: 32px 24px;
         text-align: center;
-        background: #fff;
+        background: var(--card);
         box-sizing: border-box;
       }
       .tip.show {
@@ -73,8 +129,8 @@
         height: 56px;
         margin-bottom: 18px;
         border-radius: 14px;
-        background: #fef3c7;
-        color: #b45309;
+        background: var(--icon-bg);
+        color: var(--icon-fg);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -87,19 +143,19 @@
         margin: 0 0 8px;
         font-size: 16px;
         font-weight: 600;
-        color: #111827;
+        color: var(--fg);
       }
       .tip p {
         margin: 0 0 6px;
         font-size: 13px;
         line-height: 1.6;
-        color: #6b7280;
+        color: var(--fg-muted);
         max-width: 300px;
       }
       .tip .note {
         margin-top: 6px;
         font-size: 12px;
-        color: #9ca3af;
+        color: var(--fg-subtle);
         max-width: 300px;
       }
       .tip .url {
@@ -107,12 +163,12 @@
         max-width: 320px;
         width: 100%;
         padding: 8px 10px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--border);
         border-radius: 6px;
-        background: #f9fafb;
+        background: var(--kbd-bg);
         font-family: ui-monospace, 'SF Mono', Menlo, monospace;
         font-size: 11.5px;
-        color: #374151;
+        color: var(--kbd-fg);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -134,27 +190,27 @@
         transition: background 0.15s;
       }
       .tip button.primary {
-        background: #2563eb;
+        background: var(--primary);
         color: #fff;
       }
       .tip button.primary:hover {
-        background: #1d4ed8;
+        background: var(--primary-hover);
       }
       .tip button.secondary {
-        background: #fff;
-        color: #374151;
-        border-color: #d1d5db;
+        background: var(--card);
+        color: var(--kbd-fg);
+        border-color: var(--border-strong);
       }
       .tip button.secondary:hover {
-        background: #f3f4f6;
+        background: var(--card-alt);
       }
       .tip button.secondary.copied {
-        color: #16a34a;
-        border-color: #bbf7d0;
-        background: #f0fdf4;
+        color: var(--success-fg);
+        border-color: var(--success-border);
+        background: var(--success-bg);
       }
       .tip code {
-        background: #f3f4f6;
+        background: var(--code-bg);
         padding: 1px 5px;
         border-radius: 4px;
         font-size: 11.5px;
@@ -169,8 +225,8 @@
         justify-content: center;
         padding: 32px 24px;
         text-align: center;
-        color: #374151;
-        background: #fff;
+        color: var(--kbd-fg);
+        background: var(--card);
         box-sizing: border-box;
       }
       .empty.hidden {
@@ -180,43 +236,57 @@
         margin: 0 0 8px;
         font-size: 16px;
         font-weight: 600;
-        color: #111827;
+        color: var(--fg);
       }
       .empty p {
         margin: 0 0 6px;
         font-size: 13px;
         line-height: 1.6;
-        color: #6b7280;
+        color: var(--fg-muted);
         max-width: 280px;
       }
-      .empty .hint {
+      .empty .pin {
         margin-top: 4px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: var(--primary-tint);
+        border: 1px solid var(--primary-tint-border);
+        color: var(--primary-tint-fg);
         font-size: 12px;
-        color: #9ca3af;
+        line-height: 1.55;
+        max-width: 280px;
+      }
+      .empty .pin strong {
+        color: var(--primary-tint-fg);
+      }
+      .empty .hint {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--fg-subtle);
       }
       .empty kbd {
         display: inline-block;
         padding: 1px 6px;
-        border: 1px solid #d1d5db;
+        border: 1px solid var(--border-strong);
         border-bottom-width: 2px;
         border-radius: 4px;
-        background: #f9fafb;
+        background: var(--kbd-bg);
         font-family: inherit;
         font-size: 11px;
-        color: #374151;
+        color: var(--kbd-fg);
       }
       .empty .settings-link {
         margin-top: 16px;
-        border: 1px solid #d1d5db;
-        background: #fff;
+        border: 1px solid var(--border-strong);
+        background: var(--card);
         border-radius: 6px;
         padding: 6px 14px;
         cursor: pointer;
         font-size: 12px;
-        color: #374151;
+        color: var(--kbd-fg);
       }
       .empty .settings-link:hover {
-        background: #f3f4f6;
+        background: var(--card-alt);
       }
     </style>
   </head>
@@ -232,29 +302,35 @@
       <button
         id="go"
         data-i18n="btn_go"
-        data-i18n-attr="title=btn_go_title"
+        data-i18n-attr="title=btn_go_title,aria-label=btn_go_title"
         title="Load"
+        aria-label="Load"
       >Go</button>
       <button
         id="pop"
-        data-i18n-attr="title=btn_pop_title"
+        data-i18n-attr="title=btn_pop_title,aria-label=btn_pop_title"
         title="Open in new tab"
-      >↗</button>
+        aria-label="Open in new tab"
+      ><span aria-hidden="true">↗</span></button>
       <button
         id="settings"
-        data-i18n-attr="title=btn_settings_title"
+        data-i18n-attr="title=btn_settings_title,aria-label=btn_settings_title"
         title="Settings"
-      >⚙</button>
+        aria-label="Settings"
+      ><span aria-hidden="true">⚙</span></button>
     </div>
     <div class="frame-wrap">
-      <iframe id="frame" referrerpolicy="no-referrer" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+      <iframe id="frame" referrerpolicy="no-referrer" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
       <div id="empty" class="empty">
         <h1 data-i18n="sidepanel_welcome_title">You're all set.</h1>
         <p data-i18n="sidepanel_welcome_body">
           Click any link on the left and it opens here, side-by-side.
         </p>
+        <p class="pin" data-i18n-html="sidepanel_welcome_pin_html">
+          Tip: click the <strong>pin</strong> icon at the top-right of this panel so it stays open when you switch tabs.
+        </p>
         <p class="hint" data-i18n-html="sidepanel_welcome_bypass_html">
-          Hold <kbd>⌘</kbd> / <kbd>Ctrl</kbd> while clicking to open in a new tab instead.
+          Hold <kbd>⌘</kbd> / <kbd>Ctrl</kbd> to open a new tab, or <kbd>⌥</kbd> Option / <kbd>Alt</kbd> to open in the current tab — both bypass the Side Panel.
         </p>
         <button
           id="open-settings"

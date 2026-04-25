@@ -1,44 +1,40 @@
 {
   "app_name": "Side Link Preview",
   "header_subtitle": "更改会自动保存，刷新页面后生效。",
-
   "section_language": "语言",
   "language_hint": "设置页面和侧边栏 UI 使用的语言。",
-
   "section_scope": "作用范围",
   "scope_hint_html": "每行一个域名，支持子域名自动匹配（填 <code>example.com</code> 会匹配 <code>www.example.com</code>、<code>blog.example.com</code>）；也支持 <code>*</code> 通配符（如 <code>*keyword*</code> 匹配任何域名中包含 <code>keyword</code> 的站点）。",
   "mode_blacklist": "黑名单（列表外的站点启用）",
   "mode_whitelist": "白名单（只在列表中启用）",
   "scope_placeholder": "example.com\n*keyword*",
-
   "section_trigger": "触发方式",
-  "trigger_hint": "点击模式：单击链接在侧边栏打开。Hover 模式：鼠标悬停到链接超过延迟时间即预览。",
-  "trigger_click": "点击打开",
-  "trigger_hover": "Hover 打开",
+  "trigger_hint": "点击链接始终在侧边栏打开。开启下方开关，可让「鼠标悬停超过延迟时间」也自动触发预览。",
+  "trigger_hover_label": "悬停也预览",
   "hover_delay_label": "Hover 延迟",
   "hover_delay_unit": "毫秒",
-  "hover_note": "Hover 预览需要侧边栏已处于打开状态。首次启用请先点击工具栏上的 Side Panel 图标或扩展图标把侧边栏打开。",
-  "trigger_click_note_html": "想让某个链接<strong>不</strong>在侧边栏打开？点击时按住 <kbd>⌘</kbd> / <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> —— 它就会像平时一样在新标签页打开。若要让整个网站都跳过，请在上方「<em>作用范围</em>」里加上它的域名。",
-
+  "hover_note": "Hover 预览需要侧边栏已处于打开状态。点击下方按钮立即打开，每个浏览器窗口只需这样做一次。",
+  "open_side_panel_btn": "立即打开侧边栏",
+  "side_panel_opened": "已打开 ✓",
+  "open_side_panel_failed": "打开失败，请用工具栏图标",
+  "trigger_click_note_html": "想让某个链接<strong>不</strong>在侧边栏打开？点击时按住 <kbd>⌘</kbd> / <kbd>Ctrl</kbd> 在新标签页打开，按住 <kbd>⇧</kbd> 在新窗口打开，或按住 <kbd>⌥</kbd> Option / <kbd>Alt</kbd> 在当前标签页打开。若要让整个网站都跳过，请在上方「<em>作用范围</em>」里加上它的域名。",
   "section_link_scope": "链接范围",
   "link_scope_hint_html": "默认只接管带 <code>target=\"_blank\"</code> 的新标签页链接。开启下面的选项后，普通站内链接（非 <code>_blank</code>）也会在侧边栏中打开。",
   "link_scope_include_nonblank": "非 _blank 链接也在侧边栏打开",
-
   "saved": "已保存",
   "save_failed": "保存失败：",
   "reset_btn": "恢复默认",
   "reset_btn_title": "恢复默认设置",
   "reset_confirm": "恢复默认设置？当前的域名列表会被清空。",
-
   "addr_placeholder": "网址",
   "btn_go": "前往",
   "btn_go_title": "加载",
   "btn_pop_title": "在新标签页打开",
   "btn_settings_title": "设置",
-
   "sidepanel_welcome_title": "安装成功。",
   "sidepanel_welcome_body": "点击左侧页面中的任意链接，即可在此分屏打开。",
-  "sidepanel_welcome_bypass_html": "点击时按住 <kbd>⌘</kbd> / <kbd>Ctrl</kbd> 会恢复为在新标签页中打开。",
+  "sidepanel_welcome_pin_html": "小贴士：点击此面板右上角的<strong>图钉</strong>图标，切换标签页时侧边栏会保持打开。",
+  "sidepanel_welcome_bypass_html": "点击时按住 <kbd>⌘</kbd> / <kbd>Ctrl</kbd> 在新标签页打开，或按住 <kbd>⌥</kbd> Option / <kbd>Alt</kbd> 在当前标签页打开 —— 都会跳过侧边栏。",
   "sidepanel_open_settings": "打开设置",
   "sponsor_cta": "在 GitHub 上赞助",
   "sidepanel_blocked_title": "无法在此预览",
@@ -46,5 +42,7 @@
   "sidepanel_blocked_note": "这是网站自身的限制，不是扩展的问题。",
   "sidepanel_blocked_open": "在新标签页打开",
   "sidepanel_blocked_copy": "复制链接",
-  "sidepanel_blocked_copied": "已复制"
+  "sidepanel_blocked_copied": "已复制",
+  "context_menu_open_in_side_panel": "在侧边栏中打开链接",
+  "storage_quota_warning": "域名列表超出 Chrome 同步存储限制，请精简后再试。"
 }

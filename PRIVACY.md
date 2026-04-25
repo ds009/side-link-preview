@@ -1,6 +1,6 @@
 # Privacy Policy · Side Link Preview
 
-_Last updated: 2026-04-24_
+_Last updated: 2026-04-25_
 
 Side Link Preview (the "Extension") respects and protects user privacy. This
 policy describes every kind of data handling the Extension performs at
@@ -52,8 +52,9 @@ down.
 | `storage`                        | Persist user settings and relay the current URL between internal modules.                                                                                                                          |
 | `tabs`                           | Retrieve the current tab's ID and window ID so the Side Panel can be bound to the correct tab.                                                                                                     |
 | `scripting`                      | Required to declare content scripts (Manifest V3 requirement).                                                                                                                                     |
-| `declarativeNetRequest`          | **Only for iframe requests initiated by this Extension's Side Panel**, strip `X-Frame-Options` / `CSP` response headers so target pages can be embedded. **Regular browsing is never affected.**   |
-| `host_permissions: <all_urls>`   | Required to intercept outgoing link clicks on any website and forward them to the Side Panel — the core feature of the Extension.                                                                  |
+| `declarativeNetRequest`          | Strip `X-Frame-Options`, `Content-Security-Policy`, `Content-Security-Policy-Report-Only` and `X-WebKit-CSP` response headers so target pages can be embedded in the Side Panel. The rule is a single dynamic rule scoped with `resourceTypes: ["sub_frame"]` **and** `initiatorDomains: [chrome.runtime.id]`. This means headers are modified **only on iframe requests whose initiator is this Extension itself (i.e. the Side Panel)**. Regular browsing on any website is completely unaffected — no other request on your device has any header modified. |
+| `contextMenus`                   | Add a single "Open link in Side Panel" entry to Chrome's right-click menu on link targets. The menu item is local to the browser — no data about the link, the page, or the click is ever sent off-device. |
+| `host_permissions: <all_urls>`   | Required to intercept outgoing link clicks on any website and forward them to the Side Panel — the core feature of the Extension. To reduce risk on sensitive flows, the Extension excludes itself from injecting on common sign-in, SSO and payment hosts (Google/Apple/Microsoft/AWS accounts, Okta, Auth0, Duo, OneLogin, Stripe Checkout, PayPal). |
 
 ## Data sharing
 

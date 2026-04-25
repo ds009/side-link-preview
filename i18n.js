@@ -1,6 +1,6 @@
-// 轻量 i18n 运行时，供 options.html / sidepanel.html 共享。
-// 在扩展自己的页面里通过普通 <script src="i18n.js"> 引入，
-// 它会暴露全局对象 SLP_I18N 并自动启动。
+// Lightweight i18n runtime shared by options.html and sidepanel.html.
+// Include it on the extension's own pages via a regular <script src="i18n.js">;
+// it exposes a global SLP_I18N object and boots itself automatically.
 (() => {
   const LOCALES = {
     en: 'English',
@@ -18,6 +18,23 @@
   const readyListeners = [];
 
   const normalize = (loc) => (LOCALES[loc] ? loc : DEFAULT_LOCALE);
+
+  // On first install (before the user has picked a language) try to follow
+  // the browser. navigator.languages looks like ["zh-CN", "zh", "en-US", "en"];
+  // pick the first primary subtag that matches one of our LOCALES, and fall
+  // back to the default if none hit.
+  const detectBrowserLocale = () => {
+    const list =
+      (navigator.languages && navigator.languages.length
+        ? navigator.languages
+        : [navigator.language]) || [];
+    for (const raw of list) {
+      if (!raw) continue;
+      const primary = String(raw).toLowerCase().split(/[-_]/)[0];
+      if (LOCALES[primary]) return primary;
+    }
+    return DEFAULT_LOCALE;
+  };
 
   const loadDict = async (locale) => {
     const url = chrome.runtime.getURL(`locales/${locale}.json`);
@@ -47,6 +64,54 @@
     return fallback != null ? fallback : key;
   };
 
+  // Whitelisted tags allowed inside data-i18n-html (aligned with what the six
+  // locale files actually use). CWS automated scanners don't like to see
+  // innerHTML = untrusted; even though `dict` is the extension's own packaged
+  // JSON, we route every HTML snippet through a whitelist parser that copies
+  // nodes via appendChild — equivalent output, zero surface for accidental
+  // injection.
+  const ALLOWED_INLINE_TAGS = new Set([
+    'STRONG',
+    'EM',
+    'CODE',
+    'KBD',
+    'BR',
+    'SPAN',
+    'B',
+    'I',
+  ]);
+
+  // Parse a dict HTML snippet into an inline sandbox; anything outside the
+  // whitelist is downgraded to its plain textContent.
+  const inlineParser = new DOMParser();
+  const buildSafeFragment = (html) => {
+    const doc = inlineParser.parseFromString(
+      `<div id="root">${html}</div>`,
+      'text/html',
+    );
+    const src = doc.getElementById('root');
+    const frag = document.createDocumentFragment();
+    const copy = (srcNode, dstParent) => {
+      for (const node of Array.from(srcNode.childNodes)) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          dstParent.appendChild(document.createTextNode(node.textContent));
+          continue;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        if (!ALLOWED_INLINE_TAGS.has(node.tagName)) {
+          // Non-whitelisted element: keep only its text, drop tag and attrs.
+          dstParent.appendChild(document.createTextNode(node.textContent));
+          continue;
+        }
+        const el = document.createElement(node.tagName.toLowerCase());
+        copy(node, el);
+        dstParent.appendChild(el);
+      }
+    };
+    if (src) copy(src, frag);
+    return frag;
+  };
+
   const apply = (root) => {
     const scope = root || document;
     scope.querySelectorAll('[data-i18n]').forEach((el) => {
@@ -58,11 +123,12 @@
     scope.querySelectorAll('[data-i18n-html]').forEach((el) => {
       const key = el.getAttribute('data-i18n-html');
       if (key && Object.prototype.hasOwnProperty.call(dict, key)) {
-        el.innerHTML = dict[key];
+        el.textContent = '';
+        el.appendChild(buildSafeFragment(dict[key]));
       }
     });
     scope.querySelectorAll('[data-i18n-attr]').forEach((el) => {
-      // 格式: "placeholder=key,title=key2"
+      // Format: "placeholder=key,title=key2"
       const spec = el.getAttribute('data-i18n-attr');
       if (!spec) return;
       spec.split(',').forEach((pair) => {
@@ -82,15 +148,17 @@
   };
 
   const boot = async () => {
-    let locale = DEFAULT_LOCALE;
+    let locale = null;
     try {
       const data = await chrome.storage.sync.get(STORAGE_KEY);
       if (data[STORAGE_KEY]?.locale) locale = data[STORAGE_KEY].locale;
     } catch (_) {}
+    // No explicit user choice yet — follow the browser language.
+    if (!locale) locale = detectBrowserLocale();
     await setLocale(locale);
   };
 
-  // storage.sync 里 locale 变了也同步更新
+  // React to locale changes written to storage.sync from any other page.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
     const next = changes[STORAGE_KEY]?.newValue;

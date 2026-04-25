@@ -1,12 +1,25 @@
-// 在页面 MAIN world 执行。
-// - 普通页面：劫持 window.open，让外链走侧边栏。
-// - Side Panel 里的 iframe：同时做 anti-frame-busting + 劫持 window.open
-//   （这样 Side Panel 里调 window.open 也能在当前侧边栏内就地导航）。
+// Runs in the page's MAIN world.
+// - On regular pages: hijack window.open so outgoing links go through the Side Panel.
+// - Inside Side Panel iframes: additionally suppress frame-busting and keep
+//   window.open calls inside the panel instead of popping real windows.
 (() => {
-  if (window.__SLP_INIT__) return;
-  window.__SLP_INIT__ = true;
+  // Use Symbol.for as a one-shot init marker so pages can't probe for a
+  // predictable string key on window.
+  const INIT_KEY = Symbol.for('__slp_inited__');
+  if (window[INIT_KEY]) return;
+  try {
+    Object.defineProperty(window, INIT_KEY, {
+      value: true,
+      configurable: false,
+      enumerable: false,
+      writable: false,
+    });
+  } catch (_) {
+    window[INIT_KEY] = true;
+  }
 
-  // 判断当前 frame 的祖先里是否有扩展 origin（即是否在 Side Panel 里）
+  // Detect whether any ancestor frame belongs to our extension origin
+  // (i.e. we're inside the Side Panel).
   let inExtFrame = false;
   try {
     const ancestors = window.location.ancestorOrigins;
@@ -20,7 +33,7 @@
     }
   } catch (_) {}
 
-  // A. Side Panel iframe：抑制 frame-busting（伪造 top/parent 为 self）
+  // A. Side Panel iframe: suppress frame-busting by spoofing top/parent to self.
   if (inExtFrame) {
     const selfWin = window.self;
     try {
@@ -49,7 +62,17 @@
     } catch (_) {}
   }
 
-  // B. 劫持 window.open（两种上下文都要）
+  // Short-lived "let window.open run normally" flag. content.js fires
+  // __SLP_BYPASS__ when the user just modifier-clicked a link, so JS-driven
+  // window.open() calls within that gesture are honored as the user intended
+  // (new tab / window) instead of being redirected into the Side Panel.
+  let bypassUntil = 0;
+  window.addEventListener('__SLP_BYPASS__', (e) => {
+    const ms = Number(e?.detail?.ms) || 400;
+    bypassUntil = Date.now() + ms;
+  });
+
+  // B. Hijack window.open in both contexts.
   const origOpen = window.open;
   const fakeWin = () => ({
     closed: false,
@@ -62,17 +85,18 @@
     location: { href: '' },
   });
 
-  // OAuth / SSO / 分享弹窗通常会指定宽高或坐标（如
-  // `window.open(url, 'oauth', 'width=500,height=600,left=..,top=..')`），
-  // 这些场景需要真正的弹窗，不应被接管。
+  // OAuth / SSO / share popups typically pass explicit size or position
+  // features (e.g. `window.open(url, 'oauth', 'width=500,height=600,left=..,top=..')`).
+  // Those need a real popup window and must NOT be redirected into the Side Panel.
   const looksLikePopupWindow = (features) => {
     if (typeof features !== 'string' || !features) return false;
     return /\b(width|height|left|top|popup)\s*=/i.test(features);
   };
 
-  // 只接管真正语义上的"新开一个标签/窗口"：
-  //   - 无 target，或 target 为 _blank / _new
-  // 命名 target（如 iframe 名、站点内部复用窗口名）保持原样
+  // Only take over calls whose semantics are truly "open a new tab/window":
+  //   - no target, or target is _blank / _new.
+  // Named targets (iframe names, site-internal reused window names) are left
+  // alone.
   const looksLikeBlankTarget = (target) => {
     if (target == null || target === '') return true;
     const t = String(target).toLowerCase();
@@ -81,6 +105,11 @@
 
   window.open = function (url, target, features) {
     try {
+      // User just modifier-clicked a link — let window.open behave normally
+      // so the browser's native modifier semantics still apply.
+      if (Date.now() < bypassUntil) {
+        return origOpen.apply(this, arguments);
+      }
       if (
         typeof url === 'string' &&
         /^https?:/i.test(url) &&
@@ -93,7 +122,7 @@
         return fakeWin();
       }
     } catch (_) {
-      // 走原逻辑
+      // Fall through to the original implementation.
     }
     return origOpen.apply(this, arguments);
   };

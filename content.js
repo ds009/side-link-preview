@@ -2,15 +2,16 @@
   const DEFAULTS = {
     mode: 'blacklist',
     list: [],
-    trigger: 'click',
+    hoverEnabled: false,
     hoverDelay: 500,
     linkScope: 'blank-only',
     locale: 'en',
   };
 
-  // 判断当前 frame 是否被本扩展（Side Panel）嵌入。
-  // 注意 content.js 跑在 ISOLATED world，这里读到的 window.top / parent 不会被
-  // injected.js 在 MAIN world 对 window.top 的伪造污染。
+  // Detect whether this frame is embedded inside the extension's Side Panel.
+  // content.js runs in the ISOLATED world, so the window.top / parent values
+  // read here are not polluted by injected.js's MAIN-world spoofing of
+  // window.top.
   const inSidePanel = (() => {
     try {
       const ancestors = location.ancestorOrigins;
@@ -22,8 +23,9 @@
     return false;
   })();
 
-  // 向 Side Panel 顶层发"已加载"信号。只要 content.js 能运行到这里，就说明
-  // 目标站没被 XFO/CSP 拦掉，sidepanel.js 可以取消"疑似被拦截"的超时提示。
+  // Send a "loaded" ping up to the Side Panel's top frame. Just reaching this
+  // line proves the site wasn't blocked by XFO/CSP, so sidepanel.js can cancel
+  // its "probably blocked" timeout banner.
   if (inSidePanel) {
     try {
       window.top.postMessage(
@@ -38,6 +40,11 @@
   const applySettings = (raw) => {
     settings = { ...DEFAULTS, ...(raw || {}) };
     if (!Array.isArray(settings.list)) settings.list = [];
+    // Back-compat: older schemas used `trigger: 'click' | 'hover'`; newer
+    // schemas use `hoverEnabled`.
+    if (raw && raw.hoverEnabled === undefined && raw.trigger === 'hover') {
+      settings.hoverEnabled = true;
+    }
   };
 
   chrome.storage.sync
@@ -50,9 +57,11 @@
     if (changes.slpSettings) applySettings(changes.slpSettings.newValue);
   });
 
-  // 域名匹配：
-  // - 精确匹配或子域名匹配（example.com 匹配 www.example.com / blog.example.com）
-  // - 支持 * 通配符（*example* 匹配任何包含 example 的域名）
+  // Domain matching rules:
+  // - Exact host match, or subdomain match (example.com matches
+  //   www.example.com / blog.example.com).
+  // - * wildcard supported (e.g. *example* matches any host containing
+  //   "example").
   const matchDomain = (host, pattern) => {
     if (!pattern) return false;
     const p = String(pattern).toLowerCase();
@@ -78,7 +87,7 @@
     if (!a || a.tagName !== 'A') return false;
     if (!a.href || a.href.startsWith('javascript:')) return false;
     if (!/^https?:/i.test(a.href)) return false;
-    // Side Panel 内部：所有链接都拦截，强制就地跳转
+    // Inside the Side Panel: intercept every link so navigation stays in place.
     if (inSidePanel) return true;
     if (settings.linkScope === 'blank-only' && a.target !== '_blank')
       return false;
@@ -87,6 +96,23 @@
 
   const hasModifier = (e) =>
     e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
+
+  // Map modifier combo to an explicit action so each modifier yields a
+  // distinct, predictable result instead of all being collapsed into
+  // "browser default for target=_blank" (which is just "new tab").
+  //
+  //   no modifier            -> side panel (handled outside)
+  //   ⌘ / Ctrl               -> new background tab    (browser default)
+  //   ⌘+⇧ / Ctrl+⇧           -> new foreground tab    (browser default)
+  //   ⇧ alone                -> new window            (browser default)
+  //   ⌥ / Alt alone          -> current tab           (overrides _blank)
+  //   anything else exotic   -> let the browser decide
+  const resolveModifierAction = (e) => {
+    if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) return 'self';
+    if (e.metaKey || e.ctrlKey) return 'native'; // new tab (bg/fg per ⇧)
+    if (e.shiftKey) return 'native'; // new window
+    return 'native';
+  };
 
   const findAnchor = (e) => {
     const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
@@ -97,14 +123,33 @@
     return null;
   };
 
+  // When the user uses a modifier-key click, we want to make sure that even
+  // sites whose links go through window.open() (instead of <a target="_blank">)
+  // do NOT get redirected into the Side Panel by injected.js's hijack. We can't
+  // share state across worlds directly, so we set a short-lived flag here and
+  // ignore window.open echoes that arrive within the same gesture.
+  let bypassUntil = 0;
+  const markBypassWindow = () => {
+    bypassUntil = Date.now() + 400;
+    // Also notify injected.js (in the MAIN world) so it actually lets
+    // window.open run instead of returning a fake stub.
+    try {
+      window.dispatchEvent(
+        new CustomEvent('__SLP_BYPASS__', { detail: { ms: 400 } }),
+      );
+    } catch (_) {}
+  };
+  const inBypassWindow = () => Date.now() < bypassUntil;
+
   let lastSent = { url: '', at: 0 };
   const sendOpen = (url, trigger) => {
     const now = Date.now();
     if (lastSent.url === url && now - lastSent.at < 300) return;
     lastSent = { url, at: now };
 
-    // 在 Side Panel 内部（包括嵌套 iframe）直接让 sidepanel.js 重新 load，
-    // 不走 background，不打开新 tab / 不新建 Side Panel。
+    // Inside the Side Panel (including nested iframes) just ask sidepanel.js
+    // to re-load the panel. Don't route through background, don't open a new
+    // tab, don't spin up another Side Panel.
     if (inSidePanel) {
       try {
         window.top.postMessage(
@@ -136,16 +181,41 @@
 
   // ---------- click / mousedown / auxclick ----------
   const handleClick = (e) => {
-    // Side Panel 内部：不受 trigger / 黑白名单影响，始终走 click 拦截
+    // Click interception is always on. Only check scope rules on external
+    // pages — inside the Side Panel blacklist/whitelist don't apply.
     if (!inSidePanel) {
-      if (settings.trigger !== 'click') return;
       if (!isEnabledForHost()) return;
     }
-    if (hasModifier(e)) return;
     if (e.button !== 0 && e.type !== 'auxclick') return;
 
     const a = findAnchor(e);
     if (!shouldIntercept(a)) return;
+
+    if (hasModifier(e)) {
+      // The user explicitly asked for a non-Side-Panel behavior via a modifier
+      // key. Honor that, and DO NOT route to the Side Panel.
+      const action = resolveModifierAction(e);
+      if (action === 'self') {
+        // ⌥/Alt alone → open in the current tab (overrides target="_blank").
+        // We must preventDefault here because the link's native default for
+        // ⌥ on macOS is "download", which is rarely what users want.
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          window.location.href = a.href;
+        } catch (_) {}
+        // Mark this click so injected.js's window.open hijack stays out of it.
+        markBypassWindow();
+        return;
+      }
+      // 'native' → fall through with no preventDefault so the browser applies
+      // its built-in modifier semantics:
+      //   ⌘/Ctrl click       → new background tab
+      //   ⌘+⇧ / Ctrl+⇧ click → new foreground tab
+      //   ⇧ click            → new window
+      markBypassWindow();
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -167,8 +237,8 @@
   };
 
   const handleOver = (e) => {
-    if (inSidePanel) return; // Side Panel 内不 hover 触发
-    if (settings.trigger !== 'hover') return;
+    if (inSidePanel) return; // Don't trigger hover preview inside the Side Panel itself.
+    if (!settings.hoverEnabled) return;
     if (!isEnabledForHost()) return;
     if (hasModifier(e)) return;
 
@@ -189,7 +259,7 @@
   };
 
   const handleOut = (e) => {
-    if (settings.trigger !== 'hover') return;
+    if (!settings.hoverEnabled) return;
     if (!hoverAnchor) return;
     const to = e.relatedTarget;
     if (to && hoverAnchor.contains(to)) return;
@@ -199,12 +269,15 @@
   document.addEventListener('mouseover', handleOver, true);
   document.addEventListener('mouseout', handleOut, true);
 
-  // ---------- window.open 劫持的回声（来自 injected.js）----------
+  // ---------- Echo of hijacked window.open (from injected.js) ----------
   window.addEventListener('__SLP_OPEN__', (e) => {
     if (!inSidePanel && !isEnabledForHost()) return;
+    // The user just pressed a modifier key on the originating click — stay out
+    // of the way and let the page's window.open run as the user intended.
+    if (inBypassWindow()) return;
     const url = e?.detail?.url;
     if (typeof url === 'string' && /^https?:/i.test(url)) {
-      // 来自用户手势内的 window.open，按 click 处理
+      // Originated from window.open inside a user gesture — treat as a click.
       sendOpen(url, 'click');
     }
   });
