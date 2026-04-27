@@ -111,6 +111,7 @@
   }
 
   let settings = { ...DEFAULTS };
+  let settingsLoaded = false;
 
   const applySettings = (raw) => {
     settings = { ...DEFAULTS, ...(raw || {}) };
@@ -120,12 +121,32 @@
     if (raw && raw.hoverEnabled === undefined && raw.trigger === 'hover') {
       settings.hoverEnabled = true;
     }
+    settingsLoaded = true;
+    announceHostState();
+  };
+
+  // Tell injected.js (MAIN world) whether this host is on the user's disable
+  // list, so it can skip its window.open hijack entirely. On disabled hosts
+  // the extension should be a no-op — page-level window.open() must keep its
+  // native semantics, never get swapped for a fake stub.
+  const announceHostState = () => {
+    if (inSidePanel) return; // Inside the panel iframe the hijack is required.
+    try {
+      window.dispatchEvent(
+        new CustomEvent('__SLP_HOST_STATE__', {
+          detail: { disabled: !isEnabledForHost() },
+        }),
+      );
+    } catch (_) {}
   };
 
   chrome.storage.sync
     .get('slpSettings')
     .then((data) => applySettings(data.slpSettings))
-    .catch(() => {});
+    .catch(() => {
+      settingsLoaded = true;
+      announceHostState();
+    });
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;

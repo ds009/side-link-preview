@@ -72,6 +72,16 @@
     bypassUntil = Date.now() + ms;
   });
 
+  // Persistent "this host is on the user's disable list" flag, pushed by
+  // content.js after it loads slpSettings (and on every settings change).
+  // While true, window.open keeps its native semantics — the extension is a
+  // no-op on this page and the page's own popup logic must not be broken.
+  // Ignored inside the Side Panel itself, where hijacking is required.
+  let hostDisabled = false;
+  window.addEventListener('__SLP_HOST_STATE__', (e) => {
+    hostDisabled = !!e?.detail?.disabled;
+  });
+
   // B. Hijack window.open in both contexts.
   const origOpen = window.open;
   const fakeWin = () => ({
@@ -105,6 +115,12 @@
 
   window.open = function (url, target, features) {
     try {
+      // Host is on the user's disable list and we're NOT inside the Side
+      // Panel iframe — be inert. Never replace the real popup with a fake
+      // stub on disabled pages.
+      if (hostDisabled && !inExtFrame) {
+        return origOpen.apply(this, arguments);
+      }
       // User just modifier-clicked a link — let window.open behave normally
       // so the browser's native modifier semantics still apply.
       if (Date.now() < bypassUntil) {
