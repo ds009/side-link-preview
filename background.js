@@ -175,6 +175,14 @@ chrome.commands?.onCommand.addListener(async (command) => {
 chrome.action?.onClicked.addListener(async (tab) => {
   if (!tab?.id || !tab?.windowId) return;
   try {
+    // Re-enable in case our blacklist auto-disable closed the panel for this
+    // tab. Toolbar click is an explicit user gesture, so honor it even on
+    // user-disabled hosts.
+    await chrome.sidePanel.setOptions({
+      tabId: tab.id,
+      path: `sidepanel.html?tabId=${tab.id}`,
+      enabled: true,
+    });
     await chrome.sidePanel.open({ tabId: tab.id, windowId: tab.windowId });
   } catch (err) {
     console.warn('[SideLinkPreview] action.onClicked:', err);
@@ -229,33 +237,117 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove(`sp_url_${tabId}`).catch(() => {});
 });
 
-// ---------- Disable Side Panel on system pages ----------
-// Hide this extension's Side Panel on chrome://, chrome-extension://,
-// devtools://, view-source:, about: and similar internal pages so it doesn't
-// linger when switching to them from a regular tab.
+// ---------- Auto-disable Side Panel on system + user-disabled hosts ----------
+// Hide this extension's Side Panel on:
+//   1. chrome://, chrome-extension://, devtools://, view-source:, about:
+//      and similar internal pages
+//   2. Any host the user has disabled via Scope settings (in blacklist mode:
+//      hosts in the list; in whitelist mode: hosts NOT in the list).
 const SYSTEM_URL_RE =
   /^(chrome|chrome-extension|chrome-search|chrome-untrusted|edge|devtools|view-source|about):/i;
 
 const isSystemUrl = (url) => !url || SYSTEM_URL_RE.test(url);
 
-const toggleSidePanelForTab = (tabId, url) => {
+// Mirrors content.js's matchDomain — exact host, subdomain (`.example.com`),
+// or `*`-wildcard pattern.
+const matchDomainBg = (host, pattern) => {
+  if (!pattern) return false;
+  const p = String(pattern).toLowerCase();
+  if (p.includes('*')) {
+    const re = new RegExp(
+      '^' +
+        p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') +
+        '$',
+    );
+    return re.test(host);
+  }
+  return host === p || host.endsWith('.' + p);
+};
+
+const isHostDisabledBySettings = (host, settings) => {
+  if (!host) return false;
+  const list = Array.isArray(settings?.list) ? settings.list : [];
+  const listed = list.some((p) => matchDomainBg(host, p));
+  if (settings?.mode === 'whitelist') return !listed;
+  return listed;
+};
+
+// Tiny in-memory cache to avoid hitting storage on every tab event. The
+// service worker can be torn down at any time, in which case the cache
+// rebuilds on first use — that's fine.
+let cachedSettings = null;
+const getSettings = async () => {
+  if (cachedSettings) return cachedSettings;
+  try {
+    const data = await chrome.storage.sync.get('slpSettings');
+    cachedSettings = data.slpSettings || {};
+  } catch (_) {
+    cachedSettings = {};
+  }
+  return cachedSettings;
+};
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.slpSettings) {
+    cachedSettings = changes.slpSettings.newValue || {};
+  }
+});
+
+const isUrlPanelDisabled = async (url) => {
+  if (isSystemUrl(url)) return true;
+  let host;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch (_) {
+    return false;
+  }
+  const settings = await getSettings();
+  return isHostDisabledBySettings(host, settings);
+};
+
+const refreshSidePanelForTab = async (tabId, url) => {
   if (!tabId) return;
-  chrome.sidePanel
-    .setOptions({ tabId, enabled: !isSystemUrl(url) })
-    .catch((err) => console.warn('[SideLinkPreview] toggle panel:', err));
+  const disabled = await isUrlPanelDisabled(url);
+  try {
+    await chrome.sidePanel.setOptions({ tabId, enabled: !disabled });
+  } catch (err) {
+    console.warn('[SideLinkPreview] toggle panel:', err);
+  }
 };
 
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   try {
     const tab = await chrome.tabs.get(tabId);
-    toggleSidePanelForTab(tabId, tab.url || tab.pendingUrl);
+    refreshSidePanelForTab(tabId, tab.url || tab.pendingUrl);
   } catch (_) {}
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url) {
-    toggleSidePanelForTab(tabId, changeInfo.url);
+    refreshSidePanelForTab(tabId, changeInfo.url);
   } else if (changeInfo.status === 'loading' && tab?.pendingUrl) {
-    toggleSidePanelForTab(tabId, tab.pendingUrl);
+    refreshSidePanelForTab(tabId, tab.pendingUrl);
   }
+});
+
+// When the user edits the Scope list in options, re-evaluate the active tab
+// in every window so a panel currently open on a freshly-blacklisted site
+// disappears immediately, without waiting for a navigation.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'sync' || !changes.slpSettings) return;
+  const before = changes.slpSettings.oldValue || {};
+  const after = changes.slpSettings.newValue || {};
+  const listChanged =
+    JSON.stringify(before.list || []) !== JSON.stringify(after.list || []);
+  const modeChanged = before.mode !== after.mode;
+  if (!listChanged && !modeChanged) return;
+
+  chrome.tabs
+    .query({})
+    .then((tabs) => {
+      for (const t of tabs) {
+        if (!t.id) continue;
+        refreshSidePanelForTab(t.id, t.url || t.pendingUrl);
+      }
+    })
+    .catch(() => {});
 });

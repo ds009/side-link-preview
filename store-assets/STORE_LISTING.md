@@ -39,7 +39,7 @@ WHAT IT DOES
 
 KEY FEATURES
 • Arc-style split reading — without leaving Chrome
-• Built-in address bar and "pop out to new tab" button inside the panel
+• Built-in address bar and one-click "Disable on this site" button
 • Hover-to-preview mode with a configurable delay
 • Per-domain blacklist or whitelist (wildcards supported)
 • Option to intercept all links, not just target="_blank"

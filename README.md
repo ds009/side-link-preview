@@ -26,7 +26,7 @@ Intercepts `target="_blank"` links and opens them in Chrome's Side Panel — an 
   - `⌘`+`⇧` / `Ctrl`+`⇧` → new foreground tab
   - `⇧` → new window
   - `⌥` / `Alt` → current tab (overrides `target="_blank"` so the link opens in place)
-- Side Panel comes with a built-in address bar and a "pop out to new tab" button
+- Side Panel comes with a built-in address bar and a one-click "Disable on this site" button
 - Clicking another link in the same tab refreshes the Side Panel in place
 - **Keyboard shortcut** `Alt+Shift+P` to preview the current tab in the Side Panel
 - **Right-click context menu** "Open link in Side Panel" — one-shot bypass of blacklist / link-scope rules

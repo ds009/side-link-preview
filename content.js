@@ -23,6 +23,20 @@
     return false;
   })();
 
+  // Whether this frame is the *immediate* child of the Side Panel page (i.e.
+  // the iframe whose src is the user-clicked URL). Nested iframes are also
+  // inside the panel but their scroll position isn't what the user sees.
+  const isImmediatePanelChild = (() => {
+    try {
+      const a = location.ancestorOrigins;
+      return (
+        a && a.length === 1 && a[0].startsWith('chrome-extension://')
+      );
+    } catch (_) {
+      return false;
+    }
+  })();
+
   // Send a "loaded" ping up to the Side Panel's top frame. Just reaching this
   // line proves the site wasn't blocked by XFO/CSP, so sidepanel.js can cancel
   // its "probably blocked" timeout banner.
@@ -33,6 +47,67 @@
         '*',
       );
     } catch (_) {}
+  }
+
+  // ---------- Back-to-top affordance ----------
+  // For the Side Panel's primary iframe only: track scroll state and notify
+  // the panel UI when the page is at least 2 viewports tall and has been
+  // scrolled past 1 viewport. The panel renders a floating button on top of
+  // the iframe; clicking it sends SCROLL_TOP back to us.
+  if (isImmediatePanelChild) {
+    const PAGE_LENGTH_FACTOR = 2;
+    const SCROLL_THRESHOLD_FACTOR = 1;
+    let lastShown = false;
+    let pending = false;
+
+    const evaluateScroll = () => {
+      pending = false;
+      const sh = Math.max(
+        document.documentElement?.scrollHeight || 0,
+        document.body?.scrollHeight || 0,
+      );
+      const ih = window.innerHeight || 0;
+      const sy = window.scrollY || window.pageYOffset || 0;
+      const show =
+        ih > 0 &&
+        sh >= ih * PAGE_LENGTH_FACTOR &&
+        sy >= ih * SCROLL_THRESHOLD_FACTOR;
+      if (show === lastShown) return;
+      lastShown = show;
+      try {
+        window.top.postMessage(
+          { __slp: 1, type: 'SCROLL_STATE', show },
+          '*',
+        );
+      } catch (_) {}
+    };
+
+    const onScroll = () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(evaluateScroll);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    // Re-evaluate after late-loading content (images, fonts) changes the
+    // document height.
+    window.addEventListener('load', evaluateScroll, { once: true });
+    setTimeout(evaluateScroll, 250);
+
+    // Receive "scroll to top" from sidepanel.js.
+    window.addEventListener('message', (e) => {
+      if (e.source !== window.top) return;
+      const d = e.data;
+      if (!d || d.__slp !== 1) return;
+      if (d.type === 'SCROLL_TOP') {
+        try {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (_) {
+          window.scrollTo(0, 0);
+        }
+      }
+    });
   }
 
   let settings = { ...DEFAULTS };
@@ -83,11 +158,31 @@
     return !listed;
   };
 
+  // Same-page check: ignore query string and hash. Used to skip in-page
+  // anchor jumps (#section), pagination/filter changes that only differ by
+  // query, and any link that points back to the current page itself —
+  // routing those through the Side Panel makes no sense and breaks
+  // ergonomic things like "back to top" anchors.
+  const isSamePage = (href) => {
+    try {
+      const u = new URL(href, location.href);
+      return (
+        u.origin === location.origin && u.pathname === location.pathname
+      );
+    } catch (_) {
+      return false;
+    }
+  };
+
   const shouldIntercept = (a) => {
     if (!a || a.tagName !== 'A') return false;
     if (!a.href || a.href.startsWith('javascript:')) return false;
     if (!/^https?:/i.test(a.href)) return false;
-    // Inside the Side Panel: intercept every link so navigation stays in place.
+    // Anchor / same-page links: let the browser handle them natively
+    // (scroll to fragment, in-place query update, etc.).
+    if (isSamePage(a.href)) return false;
+    // Inside the Side Panel: intercept every (non-same-page) link so
+    // navigation stays in place.
     if (inSidePanel) return true;
     if (settings.linkScope === 'blank-only' && a.target !== '_blank')
       return false;
@@ -276,9 +371,11 @@
     // of the way and let the page's window.open run as the user intended.
     if (inBypassWindow()) return;
     const url = e?.detail?.url;
-    if (typeof url === 'string' && /^https?:/i.test(url)) {
-      // Originated from window.open inside a user gesture — treat as a click.
-      sendOpen(url, 'click');
-    }
+    if (typeof url !== 'string' || !/^https?:/i.test(url)) return;
+    // Skip same-page window.open targets (rare but possible) so we don't
+    // re-render the current page in the Side Panel for no reason.
+    if (isSamePage(url)) return;
+    // Originated from window.open inside a user gesture — treat as a click.
+    sendOpen(url, 'click');
   });
 })();

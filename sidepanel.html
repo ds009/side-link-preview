@@ -97,10 +97,85 @@
       .bar button:hover {
         background: var(--card-alt);
       }
+      .bar button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .bar button.danger:hover:not(:disabled) {
+        background: #fee2e2;
+        border-color: #fca5a5;
+        color: #b91c1c;
+      }
+      @media (prefers-color-scheme: dark) {
+        .bar button.danger:hover:not(:disabled) {
+          background: #450a0a;
+          border-color: #b91c1c;
+          color: #fca5a5;
+        }
+      }
+      .bar button.icon-only {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 8px;
+      }
+      .bar button.icon-only svg {
+        width: 13px;
+        height: 13px;
+      }
       .frame-wrap {
         width: 100%;
         height: calc(100% - 40px);
         position: relative;
+      }
+      .scroll-top {
+        position: absolute;
+        right: 14px;
+        bottom: 14px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1px solid var(--border-strong);
+        background: var(--card);
+        color: var(--kbd-fg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        opacity: 0;
+        transform: translateY(8px);
+        pointer-events: none;
+        transition:
+          opacity 0.18s ease,
+          transform 0.18s ease,
+          background 0.15s,
+          border-color 0.15s,
+          color 0.15s;
+        z-index: 10;
+      }
+      .scroll-top.show {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+      .scroll-top:hover {
+        background: var(--primary-tint);
+        color: var(--primary);
+        border-color: var(--primary);
+      }
+      .scroll-top:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+      .scroll-top svg {
+        width: 14px;
+        height: 14px;
+      }
+      @media (prefers-color-scheme: dark) {
+        .scroll-top {
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+        }
       }
       iframe {
         display: block;
@@ -307,11 +382,26 @@
         aria-label="Load"
       >Go</button>
       <button
-        id="pop"
-        data-i18n-attr="title=btn_pop_title,aria-label=btn_pop_title"
-        title="Open in new tab"
-        aria-label="Open in new tab"
-      ><span aria-hidden="true">↗</span></button>
+        id="block"
+        class="danger icon-only"
+        type="button"
+        disabled
+        data-i18n-attr="title=btn_block_site_title,aria-label=btn_block_site_title"
+        title="Disable Side Panel for this site"
+        aria-label="Disable Side Panel for this site"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+        >
+          <circle cx="12" cy="12" r="9" />
+          <line x1="5.6" y1="5.6" x2="18.4" y2="18.4" />
+        </svg>
+      </button>
       <button
         id="settings"
         data-i18n-attr="title=btn_settings_title,aria-label=btn_settings_title"
@@ -321,6 +411,26 @@
     </div>
     <div class="frame-wrap">
       <iframe id="frame" referrerpolicy="no-referrer" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+      <button
+        id="scroll-top"
+        class="scroll-top"
+        type="button"
+        data-i18n-attr="title=btn_back_to_top_title,aria-label=btn_back_to_top_title"
+        title="Back to top"
+        aria-label="Back to top"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="6 14 12 8 18 14" />
+        </svg>
+      </button>
       <div id="empty" class="empty">
         <h1 data-i18n="sidepanel_welcome_title">You're all set.</h1>
         <p data-i18n="sidepanel_welcome_body">

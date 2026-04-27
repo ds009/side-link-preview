@@ -9,9 +9,10 @@ const tipOpenBtn = document.getElementById('tip-open');
 const tipCopyBtn = document.getElementById('tip-copy');
 const empty = document.getElementById('empty');
 const goBtn = document.getElementById('go');
-const popBtn = document.getElementById('pop');
+const blockBtn = document.getElementById('block');
 const settingsBtn = document.getElementById('settings');
 const openSettingsBtn = document.getElementById('open-settings');
+const scrollTopBtn = document.getElementById('scroll-top');
 
 // Timeout after which we assume the iframe was rejected by the target site.
 // content.js posts a LOADED ping as soon as it enters the iframe; if none
@@ -39,6 +40,10 @@ const load = (url) => {
   if (!url) return;
   currentUrl = url;
   addr.value = url;
+  if (blockBtn) blockBtn.disabled = false;
+  // New page → reset back-to-top until content.js inside the new iframe
+  // tells us the page is tall enough and scrolled enough.
+  scrollTopBtn?.classList.remove('show');
   loadToken++;
   const myToken = loadToken;
 
@@ -73,10 +78,10 @@ addr.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') load(addr.value.trim());
 });
 
+// Used by the "Open in new tab" button inside the blocked-page tip.
 const openInNewTab = () => {
   if (currentUrl) chrome.tabs.create({ url: currentUrl });
 };
-popBtn.addEventListener('click', openInNewTab);
 tipOpenBtn?.addEventListener('click', openInNewTab);
 
 let copyTimer = null;
@@ -114,6 +119,75 @@ const openOptions = () => {
 
 settingsBtn?.addEventListener('click', openOptions);
 openSettingsBtn?.addEventListener('click', openOptions);
+
+// "Disable on this site" — adds the current host to the blacklist (or removes
+// it from the whitelist), then closes the Side Panel. The user can always
+// undo this from the options page.
+const blockCurrentSite = async () => {
+  if (!currentUrl) return;
+  let host;
+  try {
+    host = new URL(currentUrl).hostname.toLowerCase();
+  } catch (_) {
+    return;
+  }
+  if (!host) return;
+
+  try {
+    const data = await chrome.storage.sync.get('slpSettings');
+    const cur = data.slpSettings || {};
+    const mode = cur.mode === 'whitelist' ? 'whitelist' : 'blacklist';
+    let list = Array.isArray(cur.list) ? cur.list.map((p) => String(p)) : [];
+
+    if (mode === 'whitelist') {
+      // Whitelist mode: remove the host so this site stops triggering.
+      list = list.filter((p) => p.toLowerCase() !== host);
+    } else if (!list.some((p) => p.toLowerCase() === host)) {
+      // Blacklist mode: append the host if it isn't already in the list.
+      list.push(host);
+    }
+
+    await chrome.storage.sync.set({
+      slpSettings: { ...cur, mode, list },
+    });
+  } catch (err) {
+    console.warn('[SideLinkPreview] block-site failed:', err);
+    return;
+  }
+
+  // Reload the parent tab so the new rule applies cleanly: any pending hover
+  // timers in content.js are cancelled, link handlers re-bind under the new
+  // settings, and the user sees the page in its native (non-intercepted)
+  // state immediately.
+  const id = await resolveTabId();
+  if (id) {
+    try {
+      await chrome.tabs.reload(id);
+    } catch (err) {
+      console.warn('[SideLinkPreview] tabs.reload failed:', err);
+    }
+  }
+
+  // Close the Side Panel. Prefer the explicit API on Chrome 124+; fall back
+  // to window.close() on older versions still inside our supported range.
+  // Note: this must come AFTER tabs.reload, because window.close() destroys
+  // this script's execution context.
+  try {
+    if (
+      id &&
+      chrome.sidePanel &&
+      typeof chrome.sidePanel.close === 'function'
+    ) {
+      chrome.sidePanel.close({ tabId: id });
+      return;
+    }
+  } catch (_) {}
+  try {
+    window.close();
+  } catch (_) {}
+};
+
+blockBtn?.addEventListener('click', blockCurrentSite);
 
 // If background opens the panel before setOptions takes effect, the URL may
 // not carry a tabId. Fall back to querying the currently active tab.
@@ -181,5 +255,26 @@ window.addEventListener('message', (e) => {
 
   if (data.type === 'NAVIGATE' && isSafeUrl(data.url)) {
     if (data.url !== currentUrl) load(data.url);
+    return;
+  }
+
+  if (data.type === 'SCROLL_STATE' && scrollTopBtn) {
+    // Only react to scroll state from the iframe's top-level document, not
+    // from a nested frame that might also have its own scroll.
+    if (e.source !== frame.contentWindow) return;
+    scrollTopBtn.classList.toggle('show', !!data.show);
+  }
+});
+
+// Click → ask the iframe's top-level document (where content.js listens) to
+// smooth-scroll to the top. Cross-origin postMessage is allowed by browsers.
+scrollTopBtn?.addEventListener('click', () => {
+  try {
+    frame.contentWindow?.postMessage(
+      { __slp: 1, type: 'SCROLL_TOP' },
+      '*',
+    );
+  } catch (err) {
+    console.warn('[SideLinkPreview] postMessage SCROLL_TOP:', err);
   }
 });
