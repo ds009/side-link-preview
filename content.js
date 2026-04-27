@@ -151,11 +151,24 @@
     return host === p || host.endsWith('.' + p);
   };
 
-  const isEnabledForHost = () => {
-    const host = location.hostname.toLowerCase();
-    const listed = settings.list.some((p) => matchDomain(host, p));
+  const isHostEnabled = (host) => {
+    if (!host) return true;
+    const h = String(host).toLowerCase();
+    const listed = settings.list.some((p) => matchDomain(h, p));
     if (settings.mode === 'whitelist') return listed;
     return !listed;
+  };
+
+  const isEnabledForHost = () => isHostEnabled(location.hostname);
+
+  // Extract the destination hostname from a link href / window.open URL.
+  // Returns null on malformed input so callers can skip safely.
+  const destHostOf = (href) => {
+    try {
+      return new URL(href, location.href).hostname.toLowerCase();
+    } catch (_) {
+      return null;
+    }
   };
 
   // Same-page check: ignore query string and hash. Used to skip in-page
@@ -181,6 +194,12 @@
     // Anchor / same-page links: let the browser handle them natively
     // (scroll to fragment, in-place query update, etc.).
     if (isSamePage(a.href)) return false;
+    // If the destination host is on the user's disable list, don't take it
+    // into the Side Panel — the user has explicitly told us this site
+    // shouldn't load there. Browser-native behavior takes over: target=_blank
+    // → new tab, plain link → in-place nav.
+    const dest = destHostOf(a.href);
+    if (dest && !isHostEnabled(dest)) return false;
     // Inside the Side Panel: intercept every (non-same-page) link so
     // navigation stays in place.
     if (inSidePanel) return true;
@@ -375,6 +394,19 @@
     // Skip same-page window.open targets (rare but possible) so we don't
     // re-render the current page in the Side Panel for no reason.
     if (isSamePage(url)) return;
+    // Destination host is user-disabled. injected.js already returned a fake
+    // stub for window.open(), so we can't fall back to native popup behavior;
+    // ask background to open it as a new tab instead — the user will at
+    // least see the page somewhere.
+    const dest = destHostOf(url);
+    if (dest && !isHostEnabled(dest)) {
+      try {
+        chrome.runtime.sendMessage({ type: 'OPEN_IN_NEW_TAB', url }, () => {
+          void chrome.runtime.lastError;
+        });
+      } catch (_) {}
+      return;
+    }
     // Originated from window.open inside a user gesture — treat as a click.
     sendOpen(url, 'click');
   });

@@ -190,6 +190,21 @@ chrome.action?.onClicked.addListener(async (tab) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Fallback path used by content.js when injected.js has hijacked
+  // window.open() but the destination host is on the user's disable list.
+  // We can't resurrect the original popup, so open the URL in a new tab.
+  if (msg?.type === 'OPEN_IN_NEW_TAB') {
+    if (isHttpUrl(msg.url)) {
+      chrome.tabs
+        .create({ url: msg.url, active: true })
+        .catch((err) =>
+          console.warn('[SideLinkPreview] tabs.create:', err),
+        );
+    }
+    sendResponse({ ok: true });
+    return;
+  }
+
   if (msg?.type !== 'OPEN_IN_SIDE_PANEL') return;
 
   const tabId = sender.tab?.id;
