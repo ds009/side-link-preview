@@ -9,6 +9,33 @@ worth the click.
 
 ---
 
+## Automated path (recommended)
+
+```bash
+npm install            # one-time
+npm run screenshots    # regenerates all 5 screenshots from production code
+```
+
+The script at `scripts/generate-screenshots.mjs` boots Chrome for Testing,
+loads this repo as an unpacked extension, drives the real `sidepanel.html`
+through the address bar (so navigation history, DNR header stripping and
+i18n all match production), and composites the hero shot side-by-side
+with `sharp`. Output goes to `store-assets/screenshot-{1..5}.png`.
+
+Useful flags:
+
+```bash
+npm run screenshots -- --only=1,3   # rebuild specific shots
+npm run screenshots -- --locale=zh  # render UI strings in zh-CN
+```
+
+If you just want to refresh the screenshots before a release, that's the
+whole story — skip the rest of this file. The manual procedure below is
+preserved for the rare case where you want a hand-tuned hero (e.g. a
+real Arc-style cosmetic frame around the panel).
+
+---
+
 ## Pre-flight (do once)
 
 Set up a clean recording profile so nothing personal leaks:
@@ -24,14 +51,14 @@ Set up a clean recording profile so nothing personal leaks:
 7. Hide: bookmarks bar (`⌘ Shift B`), other extensions (pin only Side Link Preview).
 8. Empty the address bar.
 9. Pick three "demo sites" that look clean and have no logged-in personalisation:
-   - **Wikipedia** (en.wikipedia.org/wiki/Side_panel)
-   - **MDN** (developer.mozilla.org/en-US/docs/Web/HTML)
-   - **Hacker News** (news.ycombinator.com)
+   - **Wikipedia** (`en.wikipedia.org/wiki/Side_panel`)
+   - **MDN** (`developer.mozilla.org/en-US/docs/Web/HTML`)
+   - **Hacker News** (`news.ycombinator.com`)
    - or your own blog / a docs site
 
-> Avoid: anything with the user's avatar visible, anything showing balances,
-> anything that includes Chrome / Arc / Edge / Microsoft branding inside the
-> screenshot frame.
+> Avoid: anything with the user's avatar visible, anything showing
+> balances, anything that includes Chrome / Arc / Edge / Microsoft
+> branding inside the screenshot frame.
 
 ---
 
@@ -42,13 +69,13 @@ Set up a clean recording profile so nothing personal leaks:
 Goal: in 1.5 seconds a stranger should *get* what the extension does.
 
 **Setup**
-- Left: Wikipedia article ("Side panel" or any neutral topic).
-- Right: Side Panel open, displaying an MDN article (e.g. "HTML iframe").
-- Pin icon visibly toggled on (so the panel looks "stuck open").
+- Left tab: Wikipedia article ("Side panel" or any neutral topic).
+- Right: Side Panel **open**, displaying an MDN article (e.g. "HTML iframe").
+- Pin icon visibly toggled on (panel looks "stuck open").
 
 **Director's notes**
-- Pick an MDN page whose top heading and an excerpt of body text fit in the
-  visible area without a scrollbar.
+- Pick an MDN page whose top heading and an excerpt of body text fit in
+  the visible area without a scrollbar.
 - Add a **bold caption strip** at the top, ~80 px tall:
 
   > *"Click any link → it opens side-by-side, in stock Chrome."*
@@ -59,23 +86,25 @@ Goal: in 1.5 seconds a stranger should *get* what the extension does.
 
 ---
 
-## Screenshot 2 — Hover preview / trigger modes
+## Screenshot 2 — Side-Panel toolbar (Back / Forward / Refresh)
 
 **File:** `screenshot-2.png`
 
-Goal: show that you can choose *Click* vs *Hover* and configure delay.
+Goal: show the panel is a real mini-browser, not a static iframe.
 
 **Setup**
-- Open the Options page (chrome-extension://…/options.html).
-- Scroll so the "Trigger" section is the visual center.
-- Have the *Hover* radio selected and the delay slider at ~600 ms.
+- Side Panel open with **history already populated** (click 2–3 in-panel
+  links so the back button enables).
+- Make sure the four toolbar elements are clearly visible from left to
+  right: ` ← `  ` → `  ` ↻ `  `[ address input ]`  `Go`  `⚙`.
+- Hover the back button so it has its hover highlight.
 
 **Caption (top strip):**
-> *"Click or hover — your call. Per-domain rules included."*
+> *"Address bar with Back / Forward / Refresh — like a tiny browser."*
 
 ---
 
-## Screenshot 3 — Per-domain rules
+## Screenshot 3 — Per-site rules (blacklist / whitelist)
 
 **File:** `screenshot-3.png`
 
@@ -93,7 +122,7 @@ Goal: show the extension is power-user friendly.
 - The "Saved" status pill visible in the corner (`color: #16a34a`).
 
 **Caption:**
-> *"Blacklist or whitelist any site. Wildcards supported."*
+> *"Per-site blacklist or whitelist. Subdomains and wildcards supported."*
 
 ---
 
@@ -114,7 +143,7 @@ Two acceptable framings — pick whichever looks better:
 **Option B — modifier bypass**
 - Web page with a link visibly hovered.
 - Overlay: `[ ⌘ ] + click → real new tab`
-- Caption: *"Need a real new tab? Hold `⌘ / Ctrl / Shift / Alt`."*
+- Caption: *"Hold `⌘ / Ctrl / Shift / Alt` for a normal new tab."*
 
 ---
 
@@ -178,11 +207,11 @@ Before uploading, confirm each screenshot:
 
 - [ ] Exactly **1280 × 800** PNG, ≤ 1 MB.
 - [ ] No personal data (avatars, names, emails, balances).
-- [ ] No Chrome / Arc / Edge logos visible (the *icon* of Chrome in the
-  toolbar is fine; the **wordmark** is not).
+- [ ] No Chrome / Arc / Edge **wordmarks** visible. The Chrome icon in the
+  toolbar is fine; the wordmark is not.
 - [ ] No copyrighted imagery you don't own (movie posters, paid stock).
-- [ ] Caption is in English (you can localize per-locale store listings later).
+- [ ] Caption is in English (per-locale captions can be added later).
 - [ ] No URLs in the address bar containing `localhost`, internal tools,
   staging hostnames, or anything you don't want public.
-- [ ] If you record a 30-second YouTube demo, paste the link into the store
-  *Promotional video* field — it boosts conversion noticeably.
+- [ ] If you record a 30-second YouTube demo, paste the link into the
+  store *Promotional video* field — it boosts conversion noticeably.

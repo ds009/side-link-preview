@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Side Link Preview",
   "version": "0.9.0",
-  "description": "Preview links in Chrome's Side Panel — an Arc-style split view and Edge-style side-by-side reading, on stock Chrome.",
+  "description": "Click a link → opens in Chrome's Side Panel side-by-side. Split-view reading on stock Chrome. No tracking, open source.",
   "minimum_chrome_version": "119",
   "homepage_url": "https://github.com/ds009/side-link-preview",
   "icons": {
@@ -15,7 +15,6 @@
     "sidePanel",
     "storage",
     "tabs",
-    "scripting",
     "declarativeNetRequest",
     "contextMenus"
   ],
@@ -43,7 +42,14 @@
         "*://auth0.com/*",
         "*://*.auth0.com/*",
         "*://checkout.stripe.com/*",
-        "*://*.paypal.com/*"
+        "*://*.paypal.com/*",
+        "*://web.whatsapp.com/*",
+        "*://web.telegram.org/*",
+        "*://accounts.firefox.com/*",
+        "*://login.yahoo.com/*",
+        "*://github.com/login*",
+        "*://github.com/sessions/*",
+        "*://*.bitwarden.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_start",
@@ -66,7 +72,14 @@
         "*://auth0.com/*",
         "*://*.auth0.com/*",
         "*://checkout.stripe.com/*",
-        "*://*.paypal.com/*"
+        "*://*.paypal.com/*",
+        "*://web.whatsapp.com/*",
+        "*://web.telegram.org/*",
+        "*://accounts.firefox.com/*",
+        "*://login.yahoo.com/*",
+        "*://github.com/login*",
+        "*://github.com/sessions/*",
+        "*://*.bitwarden.com/*"
       ],
       "js": ["injected.js"],
       "run_at": "document_start",

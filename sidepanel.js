@@ -1,6 +1,7 @@
 const params = new URLSearchParams(location.search);
 let tabId = Number(params.get('tabId')) || null;
 
+const bar = document.querySelector('.bar');
 const frame = document.getElementById('frame');
 const addr = document.getElementById('addr');
 const tip = document.getElementById('tip');
@@ -9,10 +10,16 @@ const tipOpenBtn = document.getElementById('tip-open');
 const tipCopyBtn = document.getElementById('tip-copy');
 const empty = document.getElementById('empty');
 const goBtn = document.getElementById('go');
-const blockBtn = document.getElementById('block');
 const settingsBtn = document.getElementById('settings');
 const openSettingsBtn = document.getElementById('open-settings');
 const scrollTopBtn = document.getElementById('scroll-top');
+const backBtn = document.getElementById('back');
+const forwardBtn = document.getElementById('forward');
+const refreshBtn = document.getElementById('refresh');
+const loader = document.getElementById('loader');
+
+const showLoader = () => loader?.classList.add('show');
+const hideLoader = () => loader?.classList.remove('show');
 
 // Timeout after which we assume the iframe was rejected by the target site.
 // content.js posts a LOADED ping as soon as it enters the iframe; if none
@@ -22,10 +29,47 @@ const scrollTopBtn = document.getElementById('scroll-top');
 // resource fails to load, or the page still refuses to render after header
 // stripping.
 const BLOCK_TIMEOUT_MS = 4000;
+// Some failures are transient (network blip, DNR rule arriving slightly after
+// the request, race between iframe creation and content script injection).
+// Auto-retry once before bothering the user with the "Can't preview" tip.
+const MAX_RETRIES = 1;
 
 let loadToken = 0;
 let blockTimer = null;
 let currentUrl = '';
+let retryAttempts = 0;
+
+// In-panel navigation history. We keep a Chromium-style stack: every fresh
+// load() (user typed a URL, clicked a link inside the iframe, or background
+// pushed a new sp_url_${tabId}) trims the forward portion and appends. Back/
+// forward buttons walk this stack without mutating it.
+const HISTORY_LIMIT = 100;
+const navHistory = [];
+let historyIndex = -1;
+
+const updateNavButtons = () => {
+  if (!backBtn || !forwardBtn) return;
+  const canBack = historyIndex > 0;
+  const canForward = historyIndex >= 0 && historyIndex < navHistory.length - 1;
+  const visible = canBack || canForward;
+  backBtn.classList.toggle('show', visible);
+  forwardBtn.classList.toggle('show', visible);
+  backBtn.disabled = !canBack;
+  forwardBtn.disabled = !canForward;
+};
+
+// The input itself is always visible. When it gains focus we add `.editing`
+// to the bar so back/forward/refresh/settings hide and the input + Go button
+// get the full width; on blur the rest of the chrome comes back. The input
+// title attribute holds the full URL so a hover reveals it even when the
+// rendered text is truncated by ellipsis.
+const updateAddrTitle = () => {
+  addr.title = currentUrl || '';
+};
+
+const updateRefreshButton = () => {
+  if (refreshBtn) refreshBtn.disabled = !currentUrl;
+};
 
 const clearBlockTimer = () => {
   if (blockTimer) {
@@ -36,30 +80,66 @@ const clearBlockTimer = () => {
 
 const hideTip = () => tip.classList.remove('show');
 
-const load = (url) => {
+const load = (url, { isRetry = false, fromHistory = false } = {}) => {
   if (!url) return;
   currentUrl = url;
   addr.value = url;
-  if (blockBtn) blockBtn.disabled = false;
+  updateAddrTitle();
+  updateRefreshButton();
   // New page → reset back-to-top until content.js inside the new iframe
   // tells us the page is tall enough and scrolled enough.
   scrollTopBtn?.classList.remove('show');
+  if (!isRetry) retryAttempts = 0;
+  // Push to history only on genuine new navigations. Retries keep the same
+  // entry; back/forward walks the existing stack.
+  if (!isRetry && !fromHistory) {
+    // Drop the forward stack — classic browser semantics.
+    navHistory.length = historyIndex + 1;
+    // Avoid pushing a duplicate of the entry we're currently on (e.g. NAVIGATE
+    // ping echoing the same URL we just loaded).
+    if (navHistory[historyIndex] !== url) {
+      navHistory.push(url);
+      if (navHistory.length > HISTORY_LIMIT) {
+        const overflow = navHistory.length - HISTORY_LIMIT;
+        navHistory.splice(0, overflow);
+      }
+      historyIndex = navHistory.length - 1;
+    }
+  }
+  updateNavButtons();
   loadToken++;
   const myToken = loadToken;
 
   hideTip();
   empty.classList.add('hidden');
   frame.style.display = '';
+  showLoader();
+  // On retry the URL is identical, so a plain `frame.src = url` would be a
+  // no-op. Bounce through about:blank to force a real fresh navigation.
+  if (isRetry) frame.src = 'about:blank';
   frame.src = url;
 
   clearBlockTimer();
   blockTimer = setTimeout(() => {
     if (myToken !== loadToken) return; // Superseded by a newer load().
-    showBlockedTip();
+    handleLoadFailure();
   }, BLOCK_TIMEOUT_MS);
 };
 
+// Auto-retry once before showing the blocked-page tip. Many failures clear
+// up on a second attempt (DNR rule warm-up, content script timing, transient
+// network blip).
+const handleLoadFailure = () => {
+  if (retryAttempts < MAX_RETRIES && currentUrl) {
+    retryAttempts++;
+    load(currentUrl, { isRetry: true });
+    return;
+  }
+  showBlockedTip();
+};
+
 const showBlockedTip = () => {
+  hideLoader();
   frame.style.display = 'none';
   if (tipUrlEl) {
     tipUrlEl.textContent = currentUrl;
@@ -70,12 +150,90 @@ const showBlockedTip = () => {
 
 frame.addEventListener('error', () => {
   clearBlockTimer();
-  showBlockedTip();
+  handleLoadFailure();
 });
 
-goBtn.addEventListener('click', () => load(addr.value.trim()));
+// Safety net for the visual loader: even if content.js inside the iframe
+// fails to post LOADED (rare race during service-worker restarts or pages
+// outside our match set), the iframe element itself fires `load` once the
+// document is parsed. The block-timeout / retry pipeline still handles real
+// failures separately.
+frame.addEventListener('load', () => {
+  hideLoader();
+});
+
+// Auto-prepend `https://` when the user types a bare host like
+// `google.com`, mirroring how the Chrome omnibox handles input. We only do
+// this when the input clearly looks like a host or URL path; bare strings
+// without a dot get loaded as-is so the iframe surfaces the actual error
+// instead of silently rewriting user input.
+const normalizeUserInput = (raw) => {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return '';
+  if (/^[a-z][a-z0-9+\-.]*:\/\//i.test(trimmed)) return trimmed;
+  if (/^(?:about|chrome|chrome-extension|javascript|data|file|view-source):/i.test(trimmed)) {
+    return trimmed;
+  }
+  // Heuristic: if it has a dot before the first slash, treat it as a URL.
+  const firstSlash = trimmed.indexOf('/');
+  const head = firstSlash === -1 ? trimmed : trimmed.slice(0, firstSlash);
+  if (head.includes('.') || head === 'localhost') {
+    return 'https://' + trimmed;
+  }
+  return trimmed;
+};
+
+goBtn.addEventListener('click', () => {
+  load(normalizeUserInput(addr.value));
+  addr.blur();
+});
 addr.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') load(addr.value.trim());
+  if (e.key === 'Enter') {
+    load(normalizeUserInput(addr.value));
+    addr.blur();
+  } else if (e.key === 'Escape') {
+    addr.value = currentUrl;
+    addr.blur();
+  }
+});
+
+// Focus → expand the input by hiding back/forward/refresh/settings (only Go
+// stays so the user can submit). On focus we also select-all so typing
+// replaces the URL the way browser omniboxes behave.
+addr.addEventListener('focus', () => {
+  bar?.classList.add('editing');
+  // Defer the select() so it runs after the browser's own focus handling.
+  requestAnimationFrame(() => addr.select());
+});
+// Blur → restore the original URL value (drop unsaved edits) and collapse
+// back to the default chrome. Short delay so a click on Go can still fire.
+addr.addEventListener('blur', () => {
+  setTimeout(() => {
+    if (document.activeElement === addr) return;
+    addr.value = currentUrl;
+    bar?.classList.remove('editing');
+  }, 150);
+});
+
+backBtn?.addEventListener('click', () => {
+  if (historyIndex <= 0) return;
+  historyIndex--;
+  load(navHistory[historyIndex], { fromHistory: true });
+});
+forwardBtn?.addEventListener('click', () => {
+  if (historyIndex >= navHistory.length - 1) return;
+  historyIndex++;
+  load(navHistory[historyIndex], { fromHistory: true });
+});
+// Refresh = re-fetch the same URL. fromHistory:true keeps the history stack
+// intact; isRetry:true forces an about:blank bounce so the iframe genuinely
+// reloads instead of treating identical-src as a no-op. Reset retryAttempts
+// first so the auto-retry-once safety net is fresh for this user-initiated
+// reload.
+refreshBtn?.addEventListener('click', () => {
+  if (!currentUrl) return;
+  retryAttempts = 0;
+  load(currentUrl, { fromHistory: true, isRetry: true });
 });
 
 // Used by the "Open in new tab" button inside the blocked-page tip.
@@ -120,75 +278,6 @@ const openOptions = () => {
 settingsBtn?.addEventListener('click', openOptions);
 openSettingsBtn?.addEventListener('click', openOptions);
 
-// "Disable on this site" — adds the current host to the blacklist (or removes
-// it from the whitelist), then closes the Side Panel. The user can always
-// undo this from the options page.
-const blockCurrentSite = async () => {
-  if (!currentUrl) return;
-  let host;
-  try {
-    host = new URL(currentUrl).hostname.toLowerCase();
-  } catch (_) {
-    return;
-  }
-  if (!host) return;
-
-  try {
-    const data = await chrome.storage.sync.get('slpSettings');
-    const cur = data.slpSettings || {};
-    const mode = cur.mode === 'whitelist' ? 'whitelist' : 'blacklist';
-    let list = Array.isArray(cur.list) ? cur.list.map((p) => String(p)) : [];
-
-    if (mode === 'whitelist') {
-      // Whitelist mode: remove the host so this site stops triggering.
-      list = list.filter((p) => p.toLowerCase() !== host);
-    } else if (!list.some((p) => p.toLowerCase() === host)) {
-      // Blacklist mode: append the host if it isn't already in the list.
-      list.push(host);
-    }
-
-    await chrome.storage.sync.set({
-      slpSettings: { ...cur, mode, list },
-    });
-  } catch (err) {
-    console.warn('[SideLinkPreview] block-site failed:', err);
-    return;
-  }
-
-  // Reload the parent tab so the new rule applies cleanly: any pending hover
-  // timers in content.js are cancelled, link handlers re-bind under the new
-  // settings, and the user sees the page in its native (non-intercepted)
-  // state immediately.
-  const id = await resolveTabId();
-  if (id) {
-    try {
-      await chrome.tabs.reload(id);
-    } catch (err) {
-      console.warn('[SideLinkPreview] tabs.reload failed:', err);
-    }
-  }
-
-  // Close the Side Panel. Prefer the explicit API on Chrome 124+; fall back
-  // to window.close() on older versions still inside our supported range.
-  // Note: this must come AFTER tabs.reload, because window.close() destroys
-  // this script's execution context.
-  try {
-    if (
-      id &&
-      chrome.sidePanel &&
-      typeof chrome.sidePanel.close === 'function'
-    ) {
-      chrome.sidePanel.close({ tabId: id });
-      return;
-    }
-  } catch (_) {}
-  try {
-    window.close();
-  } catch (_) {}
-};
-
-blockBtn?.addEventListener('click', blockCurrentSite);
-
 // If background opens the panel before setOptions takes effect, the URL may
 // not carry a tabId. Fall back to querying the currently active tab.
 const resolveTabId = async () => {
@@ -212,6 +301,8 @@ const readInitialUrl = async () => {
   const data = await chrome.storage.session.get(key);
   if (data[key]) load(data[key]);
 };
+
+updateRefreshButton();
 
 readInitialUrl();
 
@@ -250,6 +341,7 @@ window.addEventListener('message', (e) => {
 
   if (data.type === 'LOADED') {
     clearBlockTimer();
+    hideLoader();
     return;
   }
 

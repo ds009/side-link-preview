@@ -2,8 +2,6 @@
   const DEFAULTS = {
     mode: 'blacklist',
     list: [],
-    hoverEnabled: false,
-    hoverDelay: 500,
     linkScope: 'blank-only',
     locale: 'en',
   };
@@ -21,6 +19,17 @@
       }
     } catch (_) {}
     return false;
+  })();
+
+  // Whether this frame is the top-level page (not a nested iframe). Used by
+  // [F] to skip click/window.open interception inside third-party embeds
+  // (YouTube, Disqus, ads, etc.) when running outside the Side Panel.
+  const inTopFrame = (() => {
+    try {
+      return window === window.top;
+    } catch (_) {
+      return false;
+    }
   })();
 
   // Whether this frame is the *immediate* child of the Side Panel page (i.e.
@@ -111,17 +120,10 @@
   }
 
   let settings = { ...DEFAULTS };
-  let settingsLoaded = false;
 
   const applySettings = (raw) => {
     settings = { ...DEFAULTS, ...(raw || {}) };
     if (!Array.isArray(settings.list)) settings.list = [];
-    // Back-compat: older schemas used `trigger: 'click' | 'hover'`; newer
-    // schemas use `hoverEnabled`.
-    if (raw && raw.hoverEnabled === undefined && raw.trigger === 'hover') {
-      settings.hoverEnabled = true;
-    }
-    settingsLoaded = true;
     announceHostState();
   };
 
@@ -144,7 +146,6 @@
     .get('slpSettings')
     .then((data) => applySettings(data.slpSettings))
     .catch(() => {
-      settingsLoaded = true;
       announceHostState();
     });
 
@@ -208,19 +209,87 @@
     }
   };
 
+  // [E] Common download / media file extensions. Only matched on the URL
+  // path (not the query string), so a server-driven download via
+  // ?file=foo.zip will still go through the Side Panel — those are rare
+  // compared to direct .pdf / .zip / .dmg links.
+  const DL_EXT_RE =
+    /\.(?:pdf|zip|7z|tar|gz|tgz|rar|dmg|iso|exe|msi|apk|ipa|deb|rpm|pkg|xlsx?|docx?|pptx?|csv|mp3|mp4|mov|m4v|webm|avi|mkv|wav|flac|epub|mobi)$/i;
+
+  // [G] Localhost / RFC1918 private IPs / mDNS .local. Devs running
+  // self-signed certs and admin panels almost always want native nav, not
+  // a sandboxed iframe in the Side Panel.
+  const PRIVATE_HOST_RE =
+    /^(?:localhost|127(?:\.\d+){3}|10(?:\.\d+){3}|192\.168(?:\.\d+){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d+){2}|\[::1\]|[\w-]+\.local)$/i;
+
+  // [J] Path-prefix heuristic for SSO / login flows. Matches /login,
+  // /signin, /sign-in, /sign_in, /sso, /saml, /oauth, /oauth2, /auth — but
+  // only at the start of the path (depth 1) and only when followed by a
+  // separator, so /blog/oauth-tutorial and /authentication-strategy do
+  // NOT match.
+  const LOGIN_PATH_RE =
+    /^\/(?:login|signin|sign-in|sign_in|sso|saml|oauth2?|auth)(?:\/|$|\?|#)/i;
+
   const shouldIntercept = (a) => {
     if (!a || a.tagName !== 'A') return false;
     if (!a.href || a.href.startsWith('javascript:')) return false;
     if (!/^https?:/i.test(a.href)) return false;
+
+    // [A] Explicit download intent — let the browser download it.
+    if (a.hasAttribute('download')) return false;
+
+    // [B] target=_top / _parent semantically asks the link to navigate
+    // out of the current frame, the opposite of side-panel preview.
+    const tgt = (a.target || '').toLowerCase();
+    if (tgt === '_top' || tgt === '_parent') return false;
+
+    // [C] rel=external / rel=alternate — HTML semantic markers for
+    // "off-site" or "alternate format" (RSS / PDF feeds, mobile vs
+    // desktop variant, etc.).
+    const rel = (a.rel || '').toLowerCase().split(/\s+/).filter(Boolean);
+    if (rel.includes('external') || rel.includes('alternate'))
+      return false;
+
+    // [D] Mixed content: the Side Panel is hosted on a chrome-extension://
+    // origin (HTTPS-equivalent); http:// child resources are blocked by
+    // the browser and would never render. Send to a real tab instead.
+    if (location.protocol === 'https:' && /^http:/i.test(a.href))
+      return false;
+
     // Anchor / same-page links: let the browser handle them natively
     // (scroll to fragment, in-place query update, etc.).
     if (isSamePage(a.href)) return false;
+
+    // [E] Known downloadable / media extensions. Server might serve a
+    // viewer page for some of these, but in practice the false-positive
+    // rate is low — direct .pdf / .zip / .dmg links almost always
+    // trigger downloads or open in a non-iframable browser viewer.
+    try {
+      if (DL_EXT_RE.test(new URL(a.href, location.href).pathname))
+        return false;
+    } catch (_) {}
+
     // If the destination host is on the user's disable list, don't take it
     // into the Side Panel — the user has explicitly told us this site
     // shouldn't load there. Browser-native behavior takes over: target=_blank
     // → new tab, plain link → in-place nav.
     const dest = destHostOf(a.href);
     if (dest && !isHostEnabled(dest)) return false;
+
+    // [G] Localhost / private IPs / .local — almost always dev or admin
+    // pages with strict XFO and self-signed certs.
+    if (dest && PRIVATE_HOST_RE.test(dest)) return false;
+
+    // [J] /login, /signin, /sso, /saml, /oauth, /auth path prefixes —
+    // these are overwhelmingly auth flows that XFO themselves and need
+    // to redirect back to the parent window. Heuristic, but the regex
+    // requires the pattern to start at the path root and end at a
+    // separator, so blog articles like /blog/oauth-tutorial do not match.
+    try {
+      if (LOGIN_PATH_RE.test(new URL(a.href, location.href).pathname))
+        return false;
+    } catch (_) {}
+
     // Inside the Side Panel: intercept every (non-same-page) link so
     // navigation stays in place.
     if (inSidePanel) return true;
@@ -316,6 +385,12 @@
 
   // ---------- click / mousedown / auxclick ----------
   const handleClick = (e) => {
+    // [F] Skip clicks inside nested third-party iframes (YouTube embeds,
+    // Disqus, ads, social widgets, etc.). Top frame is always allowed,
+    // and so is the Side Panel's preview iframe (inSidePanel=true). For
+    // any other nested frame we stay completely out of the way so the
+    // embedded widget's own click semantics keep working.
+    if (!inSidePanel && !inTopFrame) return;
     // Click interception is always on. Only check scope rules on external
     // pages — inside the Side Panel blacklist/whitelist don't apply.
     if (!inSidePanel) {
@@ -361,51 +436,13 @@
   document.addEventListener('click', handleClick, true);
   document.addEventListener('auxclick', handleClick, true);
 
-  // ---------- hover ----------
-  let hoverTimer = null;
-  let hoverAnchor = null;
-
-  const clearHover = () => {
-    clearTimeout(hoverTimer);
-    hoverTimer = null;
-    hoverAnchor = null;
-  };
-
-  const handleOver = (e) => {
-    if (inSidePanel) return; // Don't trigger hover preview inside the Side Panel itself.
-    if (!settings.hoverEnabled) return;
-    if (!isEnabledForHost()) return;
-    if (hasModifier(e)) return;
-
-    const a = findAnchor(e);
-    if (!shouldIntercept(a)) {
-      if (hoverAnchor && !hoverAnchor.contains(e.target)) clearHover();
-      return;
-    }
-    if (a === hoverAnchor) return;
-
-    clearTimeout(hoverTimer);
-    hoverAnchor = a;
-    const url = a.href;
-    const delay = Math.max(50, Number(settings.hoverDelay) || 500);
-    hoverTimer = setTimeout(() => {
-      sendOpen(url, 'hover');
-    }, delay);
-  };
-
-  const handleOut = (e) => {
-    if (!settings.hoverEnabled) return;
-    if (!hoverAnchor) return;
-    const to = e.relatedTarget;
-    if (to && hoverAnchor.contains(to)) return;
-    clearHover();
-  };
-
-  document.addEventListener('mouseover', handleOver, true);
-  document.addEventListener('mouseout', handleOut, true);
-
   // ---------- Echo of hijacked window.open (from injected.js) ----------
   window.addEventListener('__SLP_OPEN__', (e) => {
+    // [F] Same nested-iframe guard as handleClick. Note that injected.js
+    // also early-returns in this case, so we should never actually
+    // receive a __SLP_OPEN__ from a nested frame — but keep the check
+    // here as belt-and-braces.
+    if (!inSidePanel && !inTopFrame) return;
     if (!inSidePanel && !isEnabledForHost()) return;
     // The user just pressed a modifier key on the originating click — stay out
     // of the way and let the page's window.open run as the user intended.

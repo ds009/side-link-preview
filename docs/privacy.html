@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy · Side Link Preview</title>
+    <meta
+      name="description"
+      content="Side Link Preview privacy policy: no analytics, no telemetry, no data leaves your browser."
+    />
+    <meta name="theme-color" content="#2563eb" />
+    <link rel="icon" type="image/png" href="../icons/icon-128.png" />
+    <style>
+      :root {
+        --fg: #0f172a;
+        --fg-muted: #475569;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --border: #e2e8f0;
+        --primary: #2563eb;
+        --code-bg: #f1f5f9;
+        --code-fg: #0f172a;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #f1f5f9;
+          --fg-muted: #94a3b8;
+          --bg: #0b1220;
+          --card: #111a2e;
+          --border: #1e293b;
+          --primary: #60a5fa;
+          --code-bg: #1e293b;
+          --code-fg: #e2e8f0;
+        }
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          -apple-system,
+          BlinkMacSystemFont,
+          'Inter',
+          'Segoe UI',
+          'PingFang SC',
+          sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 56px 24px 80px;
+      }
+      header {
+        margin-bottom: 32px;
+      }
+      header .updated {
+        color: var(--fg-muted);
+        font-size: 14px;
+      }
+      h1 {
+        font-size: 32px;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 22px;
+        margin: 32px 0 12px;
+        border-top: 1px solid var(--border);
+        padding-top: 24px;
+      }
+      h2:first-of-type {
+        border-top: none;
+        padding-top: 0;
+      }
+      a {
+        color: var(--primary);
+      }
+      code {
+        background: var(--code-bg);
+        color: var(--code-fg);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 0.93em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      ul {
+        padding-left: 22px;
+      }
+      ul li {
+        margin: 4px 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0 4px;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        vertical-align: top;
+      }
+      th {
+        background: var(--code-bg);
+        font-weight: 600;
+      }
+      .tldr {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin: 16px 0 24px;
+      }
+      .tldr ul {
+        margin: 8px 0 0;
+      }
+      footer {
+        margin-top: 64px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--fg-muted);
+      }
+      footer a {
+        color: var(--fg-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Privacy Policy · Side Link Preview</h1>
+        <div class="updated">Last updated: 2026-04-28</div>
+      </header>
+
+      <p>
+        Side Link Preview (the "Extension") respects and protects user
+        privacy. This policy describes every kind of data handling the
+        Extension performs at runtime.
+      </p>
+
+      <div class="tldr">
+        <strong>TL;DR</strong>
+        <ul>
+          <li>
+            The Extension <strong>does not collect, transmit, or sell</strong>
+            any personal data.
+          </li>
+          <li>No analytics, telemetry, or user tracking of any form.</li>
+          <li>No data is sent to the author or to any third party.</li>
+          <li>
+            All data required for the Extension to operate (user settings,
+            current Side Panel URL) is stored locally in your browser.
+          </li>
+        </ul>
+      </div>
+
+      <h2>Data we collect</h2>
+      <p>
+        <strong>None.</strong> The Extension does not collect any of the
+        following categories of information:
+      </p>
+      <ul>
+        <li>Personally identifiable information (name, email, address, etc.)</li>
+        <li>Authentication credentials (passwords, cookies, OAuth tokens)</li>
+        <li>Payment information</li>
+        <li>Personal communications (email, chat messages, etc.)</li>
+        <li>Location data</li>
+        <li>Web content or browsing history</li>
+        <li>User activity (clicks, input, keystrokes)</li>
+        <li>Website traffic or performance metrics</li>
+      </ul>
+
+      <h2>Data stored locally</h2>
+      <p>
+        In order to function, the Extension stores the following data in your
+        browser. This data
+        <strong>never leaves your device</strong> — except when you are
+        signed in to the same Chrome profile on multiple devices, in which
+        case Chrome itself syncs it for you:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Storage</th>
+            <th>Content</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>chrome.storage.sync</code></td>
+            <td>
+              User settings (blacklist/whitelist mode, domain list, link
+              scope, UI language)
+            </td>
+            <td>Persist preferences and sync across your devices</td>
+          </tr>
+          <tr>
+            <td><code>chrome.storage.session</code></td>
+            <td>The "next URL to open in the Side Panel" for each tab</td>
+            <td>Relay the URL between the content script and the Side Panel</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <code>chrome.storage.session</code> is cleared automatically when
+        the browser shuts down.
+      </p>
+
+      <h2>Permissions and why we request them</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Permission</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>sidePanel</code></td>
+            <td>Open Chrome's right-hand Side Panel to render the preview.</td>
+          </tr>
+          <tr>
+            <td><code>storage</code></td>
+            <td>
+              Persist user settings and relay the current URL between
+              internal modules.
+            </td>
+          </tr>
+          <tr>
+            <td><code>tabs</code></td>
+            <td>
+              Retrieve the current tab's ID and window ID so the Side Panel
+              can be bound to the correct tab.
+            </td>
+          </tr>
+          <tr>
+            <td><code>declarativeNetRequest</code></td>
+            <td>
+              Strip <code>X-Frame-Options</code>,
+              <code>Content-Security-Policy</code>,
+              <code>Content-Security-Policy-Report-Only</code> and
+              <code>X-WebKit-CSP</code> response headers so target pages can
+              be embedded in the Side Panel. The rule is a single dynamic
+              rule scoped with
+              <code>resourceTypes: ["sub_frame"]</code> <strong>and</strong>
+              <code>initiatorDomains: [chrome.runtime.id]</code>. This means
+              headers are modified
+              <strong
+                >only on iframe requests whose initiator is this Extension
+                itself</strong
+              >
+              (i.e. the Side Panel). Regular browsing on any website is
+              completely unaffected. The rule is registered in
+              <code>background.js</code> and is fully auditable in the
+              source.
+            </td>
+          </tr>
+          <tr>
+            <td><code>contextMenus</code></td>
+            <td>
+              Add a single "Open link in Side Panel" entry to Chrome's
+              right-click menu on link targets. The menu item is local to
+              the browser — no data about the link, the page, or the click
+              is ever sent off-device.
+            </td>
+          </tr>
+          <tr>
+            <td><code>host_permissions: &lt;all_urls&gt;</code></td>
+            <td>
+              Required for two reasons: (1) the
+              <code>declarativeNetRequest</code> <code>modifyHeaders</code>
+              rule above needs host access to take effect on the Side Panel
+              iframe's request URL; (2) the content script (declared in
+              <code>manifest.json</code>) needs to intercept outgoing link
+              clicks on any website to forward them to the Side Panel — the
+              core feature of the Extension. To reduce risk on sensitive
+              flows, the Extension explicitly excludes itself from
+              injecting on common sign-in, SSO and payment hosts
+              (Google/Apple/Microsoft/AWS accounts, Okta, Auth0, Duo,
+              OneLogin, Stripe Checkout, PayPal, GitHub login, Bitwarden,
+              WhatsApp Web, Telegram Web).
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Why we strip iframe security headers</h2>
+      <p>
+        Chrome's Side Panel renders web content via an
+        <code>&lt;iframe&gt;</code> of a
+        <code>chrome-extension://</code> origin. Most websites send
+        <code>X-Frame-Options: DENY</code> or a
+        <code>frame-ancestors</code> CSP to prevent cross-origin embedding.
+        The Extension removes those headers
+        <strong>only on requests it issues itself</strong> so it can render
+        the preview. Concretely:
+      </p>
+      <ul>
+        <li>
+          The DNR rule's <code>initiatorDomains</code> is set to the
+          Extension's own runtime ID, meaning a header is only modified
+          when the request was started <strong>by this Extension</strong>
+          (not by any other tab, extension, or page).
+        </li>
+        <li>
+          The rule's <code>resourceTypes</code> is
+          <code>["sub_frame"]</code>, restricting it to iframe navigations
+          only.
+        </li>
+        <li>
+          The rule does <strong>not</strong> modify request headers, only
+          the four response headers listed above, and only the minimum
+          needed to allow embedding.
+        </li>
+        <li>
+          The rule is a <strong>single dynamic rule</strong> registered
+          once at startup — there are no per-tab, per-domain, or
+          runtime-generated rules.
+        </li>
+      </ul>
+      <p>
+        This is the smallest scope possible to make in-Side-Panel previews
+        work without breaking any other browsing.
+      </p>
+
+      <h2>Data sharing</h2>
+      <p>
+        The Extension <strong>does not share data with any third party</strong>
+        (because there is no data to share).
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        Any update to this policy will be reflected in the Git history of
+        the Extension's repository. Material changes will also be called
+        out in the Chrome Web Store changelog.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        If you have any questions about this policy, please open an issue
+        on the Extension's repository:
+        <a href="https://github.com/ds009/side-link-preview/issues"
+          >github.com/ds009/side-link-preview/issues</a
+        >.
+      </p>
+
+      <footer>
+        <a href="./">← Back to Side Link Preview</a> ·
+        <a href="https://github.com/ds009/side-link-preview" target="_blank" rel="noopener">GitHub</a> ·
+        <a
+          href="https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md"
+          target="_blank"
+          rel="noopener"
+          >Markdown source</a
+        >
+      </footer>
+    </main>
+  </body>
+</html>

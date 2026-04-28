@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Side Link Preview — Arc-style split view, on stock Chrome</title>
+    <title>Side Link Preview — split-view link previewer for Chrome</title>
     <meta
       name="description"
-      content="A free, open-source Chrome extension that opens links in the Side Panel. Arc-style and Edge-style side-by-side reading, on stock Chrome."
+      content="Free, open-source Chrome extension that opens links in the Side Panel. Side-by-side reading on stock Chrome — no tracking, no ads."
     />
     <meta name="theme-color" content="#2563eb" />
 
@@ -14,7 +14,7 @@
     <meta property="og:title" content="Side Link Preview" />
     <meta
       property="og:description"
-      content="Click a link, read it side-by-side. Arc-style split view for stock Chrome."
+      content="Click a link → it opens in Chrome's Side Panel side-by-side. Split-view reading on stock Chrome."
     />
     <meta
       property="og:image"
@@ -441,9 +441,10 @@
           Read it <span class="grad">side-by-side.</span>
         </h1>
         <p class="lede">
-          Side Link Preview opens every <code>target="_blank"</code> link inside
-          Chrome's Side Panel — an Arc-style split view and Edge-style side-by-side
-          reading experience, built for stock Chrome.
+          Side Link Preview turns Chrome's Side Panel into a split-view
+          reading surface. Every <code>target="_blank"</code> link opens on
+          the right, side-by-side with the page you came from. Built for
+          stock Chrome.
         </p>
         <p class="subline">
           Free · Open source (MIT) · No tracking · No ads
@@ -572,6 +573,22 @@
             matched automatically.
           </p>
         </div>
+        <div class="feat">
+          <div class="icon" aria-hidden="true">↻</div>
+          <h3>Mini browser inside the panel</h3>
+          <p>
+            Address bar with Back / Forward / Refresh, auto-retry on
+            transient embed failures, and a friendly fallback card.
+          </p>
+        </div>
+        <div class="feat">
+          <div class="icon" aria-hidden="true">🧭</div>
+          <h3>Smart link filtering</h3>
+          <p>
+            Same-page anchors, downloads, login pages, mixed content,
+            localhost — they stay native, never the panel.
+          </p>
+        </div>
       </section>
 
       <!-- ============= How it works ============= -->
@@ -590,8 +607,8 @@
             Panel so it stays open while you switch tabs.
           </li>
           <li>
-            Open <em>Settings</em> to switch trigger mode, language, scope, and
-            more.
+            Open <em>Settings</em> to switch language, scope (blacklist /
+            whitelist), domain list, and link-scope rules.
           </li>
         </ol>
       </section>
@@ -634,10 +651,22 @@
         <details>
           <summary>Why does some site fail to load in the panel?</summary>
           <p>
-            A few sites enforce strict <code>frame-ancestors</code> or detect
-            iframe embedding via JavaScript. When that happens you'll see a
-            fallback card with an "Open in new tab" button — one click, you're
-            on the original tab.
+            A few sites enforce strict <code>frame-ancestors</code> via a
+            <code>&lt;meta&gt;</code> tag, or detect iframe embedding via
+            JavaScript. The panel auto-retries once and then, if it still
+            fails, shows a fallback card with an "Open in new tab" button —
+            one click, you're on the original tab.
+          </p>
+        </details>
+
+        <details>
+          <summary>Are passwords and payments safe?</summary>
+          <p>
+            Yes. The extension never injects on known sign-in, SSO or
+            payment hosts (Google / Apple / Microsoft / AWS / Okta /
+            Auth0 / Stripe / PayPal / GitHub login / Bitwarden / WhatsApp
+            Web / Telegram Web …). And the iframe in the panel is
+            sandboxed; sensitive flows always go to a real tab.
           </p>
         </details>
 
@@ -660,12 +689,7 @@
             rel="noopener"
             >GitHub</a
           >
-          <a
-            href="https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md"
-            target="_blank"
-            rel="noopener"
-            >Privacy</a
-          >
+          <a href="./privacy.html">Privacy</a>
           <a
             href="https://github.com/ds009/side-link-preview/issues"
             target="_blank"

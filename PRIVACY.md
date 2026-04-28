@@ -1,6 +1,6 @@
 # Privacy Policy · Side Link Preview
 
-_Last updated: 2026-04-25_
+_Last updated: 2026-04-28_
 
 Side Link Preview (the "Extension") respects and protects user privacy. This
 policy describes every kind of data handling the Extension performs at
@@ -51,10 +51,29 @@ down.
 | `sidePanel`                      | Open Chrome's right-hand Side Panel to render the preview.                                                                                                                                         |
 | `storage`                        | Persist user settings and relay the current URL between internal modules.                                                                                                                          |
 | `tabs`                           | Retrieve the current tab's ID and window ID so the Side Panel can be bound to the correct tab.                                                                                                     |
-| `scripting`                      | Required to declare content scripts (Manifest V3 requirement).                                                                                                                                     |
-| `declarativeNetRequest`          | Strip `X-Frame-Options`, `Content-Security-Policy`, `Content-Security-Policy-Report-Only` and `X-WebKit-CSP` response headers so target pages can be embedded in the Side Panel. The rule is a single dynamic rule scoped with `resourceTypes: ["sub_frame"]` **and** `initiatorDomains: [chrome.runtime.id]`. This means headers are modified **only on iframe requests whose initiator is this Extension itself (i.e. the Side Panel)**. Regular browsing on any website is completely unaffected — no other request on your device has any header modified. |
+| `declarativeNetRequest`          | Strip `X-Frame-Options`, `Content-Security-Policy`, `Content-Security-Policy-Report-Only` and `X-WebKit-CSP` response headers so target pages can be embedded in the Side Panel. The rule is a single dynamic rule scoped with `resourceTypes: ["sub_frame"]` **and** `initiatorDomains: [chrome.runtime.id]`. This means headers are modified **only on iframe requests whose initiator is this Extension itself (i.e. the Side Panel)**. Regular browsing on any website is completely unaffected — no other request on your device has any header modified. The rule is registered in `background.js` and is fully auditable in the source. |
 | `contextMenus`                   | Add a single "Open link in Side Panel" entry to Chrome's right-click menu on link targets. The menu item is local to the browser — no data about the link, the page, or the click is ever sent off-device. |
-| `host_permissions: <all_urls>`   | Required to intercept outgoing link clicks on any website and forward them to the Side Panel — the core feature of the Extension. To reduce risk on sensitive flows, the Extension excludes itself from injecting on common sign-in, SSO and payment hosts (Google/Apple/Microsoft/AWS accounts, Okta, Auth0, Duo, OneLogin, Stripe Checkout, PayPal). |
+| `host_permissions: <all_urls>`   | Required for two reasons: (1) the `declarativeNetRequest` `modifyHeaders` rule above needs host access to take effect on the Side Panel iframe's request URL; (2) the content script (declared in `manifest.json`) needs to intercept outgoing link clicks on any website to forward them to the Side Panel — the core feature of the Extension. To reduce risk on sensitive flows, the Extension explicitly excludes itself from injecting on common sign-in, SSO and payment hosts (Google/Apple/Microsoft/AWS accounts, Okta, Auth0, Duo, OneLogin, Stripe Checkout, PayPal, GitHub login, Bitwarden, WhatsApp Web, Telegram Web, etc.) — see `manifest.json` `content_scripts[].exclude_matches`. |
+
+## Why we strip iframe security headers
+
+Chrome's Side Panel renders web content via an `<iframe>` of a chrome-extension://
+origin. Most websites send `X-Frame-Options: DENY` or a `frame-ancestors` CSP
+to prevent cross-origin embedding. The Extension removes those headers **only
+on requests it issues itself** so it can render the preview. Concretely:
+
+- The DNR rule's `initiatorDomains` is set to the Extension's own runtime ID,
+  meaning a header is only modified when the request was started **by this
+  Extension** (not by any other tab, extension, or page).
+- The rule's `resourceTypes` is `["sub_frame"]`, restricting it to iframe
+  navigations only.
+- The rule does **not** modify request headers, only the four response
+  headers listed above, and only the minimum needed to allow embedding.
+- The rule is a **single static dynamic rule** registered once at startup —
+  there are no per-tab, per-domain, or runtime-generated rules.
+
+This is the smallest scope possible to make in-Side-Panel previews work
+without breaking any other browsing.
 
 ## Data sharing
 

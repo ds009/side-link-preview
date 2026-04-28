@@ -7,6 +7,31 @@
 
 ---
 
+## 自动化方式（推荐）
+
+```bash
+npm install            # 仅一次
+npm run screenshots    # 直接基于生产代码批量生成 5 张截图
+```
+
+脚本位于 `scripts/generate-screenshots.mjs`，工作方式如下：
+
+- 用 Chrome for Testing 启动一个干净的 profile，把仓库作为未打包扩展加载；
+- 通过地址栏驱动真实的 `sidepanel.html`（前进/后退记录、DNR 头部剥离、
+  i18n 都走生产代码路径，不模拟）；
+- 用 `sharp` 把 Hero 图左右两栏合成。
+
+常用参数：
+
+```bash
+npm run screenshots -- --only=1,3   # 只重新生成第 1、3 张
+npm run screenshots -- --locale=zh  # 用中文 UI 渲染设置页
+```
+
+如果只是发版前刷新一遍截图，这一步就够了，下面的手动流程可以跳过。
+
+---
+
 ## 准备工作（一次性）
 
 先搭一个干净的录制环境，避免任何隐私/个人信息泄漏：
@@ -53,20 +78,20 @@
 
 ---
 
-## 截图 2 — 触发模式（点击 / 悬停）
+## 截图 2 — 侧栏工具栏（后退 / 前进 / 刷新）
 
 **文件：** `screenshot-2.png`
 
-目标：让用户知道触发方式可选，延迟可调。
+目标：让用户看到侧栏其实是个"迷你浏览器"，不是死板的 iframe。
 
 **画面构图**
-- 打开 Options 页面（chrome-extension://…/options.html）。
-- 滚动到 "Trigger" 这一段处于画面中央。
-- 选中 *Hover* 单选框，延迟滑块拖到约 600 ms。
+- Side Panel 已经打开，**先点击 2–3 个面板内链接**让历史记录有内容（后退按钮变可点）。
+- 确保从左到右四件元素清晰可见：` ← `  ` → `  ` ↻ `  `[ 地址输入框 ]`  `Go`  `⚙`。
+- 鼠标悬停在后退按钮上，让按钮处于 hover 高亮态。
 
-**标题条文案：**
-> *"Click or hover — your call. Per-domain rules included."*
-> （"点击或悬停，由你决定，自带按域名规则。"）
+**标题条：**
+> *"Address bar with Back / Forward / Refresh — like a tiny browser."*
+> （"地址栏 + 后退 / 前进 / 刷新 —— 一个迷你浏览器。"）
 
 ---
 
@@ -88,8 +113,8 @@
 - 角落里的 "Saved" 状态条可见（`color: #16a34a`）。
 
 **标题条：**
-> *"Blacklist or whitelist any site. Wildcards supported."*
-> （"任意网站可加黑白名单，支持通配符。"）
+> *"Per-site blacklist or whitelist. Subdomains and wildcards supported."*
+> （"按站点黑/白名单，支持子域名和通配符。"）
 
 ---
 
@@ -111,8 +136,8 @@
 **方案 B — 修饰键绕过**
 - 网页里有一个明显被悬停的链接。
 - 叠加文字：`[ ⌘ ] + click → real new tab`
-- 标题条：*"Need a real new tab? Hold `⌘ / Ctrl / Shift / Alt`."*
-  （"想要普通新标签？按住 `⌘ / Ctrl / Shift / Alt` 即可。"）
+- 标题条：*"Hold `⌘ / Ctrl / Shift / Alt` for a normal new tab."*
+  （"按住 `⌘ / Ctrl / Shift / Alt` 即可走普通新标签。"）
 
 ---
 

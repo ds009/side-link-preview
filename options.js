@@ -1,8 +1,6 @@
 const DEFAULTS = {
   mode: 'blacklist',
   list: [],
-  hoverEnabled: false,
-  hoverDelay: 500,
   linkScope: 'blank-only',
   locale: 'en',
 };
@@ -12,30 +10,15 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 const els = {
   mode: $$('input[name="mode"]'),
-  hoverEnabled: $('#hoverEnabled'),
   includeNonBlank: $('#includeNonBlank'),
   list: $('#list'),
-  hoverDelay: $('#hoverDelay'),
-  hoverDelayRow: $('#hoverDelayRow'),
-  hoverNote: $('#hoverNote'),
-  openSidePanel: $('#openSidePanel'),
   locale: $('#locale'),
   status: $('#status'),
   reset: $('#reset'),
 };
 
-// Pre-fetch the options page's own window id: when the user clicks "Open side
-// panel now" we have to call chrome.sidePanel.open() synchronously to keep
-// the user gesture valid, so we can't await inside the click handler.
-let ownWindowId = null;
-chrome.windows
-  ?.getCurrent()
-  .then((w) => {
-    ownWindowId = w?.id ?? null;
-  })
-  .catch(() => {});
-
-const t = (key, fallback) => window.SLP_I18N?.t?.(key, fallback) ?? (fallback ?? key);
+const t = (key, fallback) =>
+  window.SLP_I18N?.t?.(key, fallback) ?? (fallback ?? key);
 
 const getRadio = (nodeList) => {
   for (const el of nodeList) if (el.checked) return el.value;
@@ -51,39 +34,22 @@ const parseList = (raw) =>
     .map((l) => l.trim().toLowerCase())
     .filter(Boolean);
 
-const clampHoverDelay = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return DEFAULTS.hoverDelay;
-  return Math.max(100, Math.min(5000, Math.round(n)));
-};
-
 const normalizeLocale = (loc) => {
   const allowed = window.SLP_I18N?.LOCALES || { en: 1 };
   return allowed[loc] ? loc : DEFAULTS.locale;
 };
 
-const syncHoverUi = (hoverEnabled) => {
-  els.hoverDelay.disabled = !hoverEnabled;
-  els.hoverDelayRow.classList.toggle('disabled', !hoverEnabled);
-  els.hoverNote.hidden = !hoverEnabled;
-};
-
 const render = (s) => {
   setRadio(els.mode, s.mode);
-  els.hoverEnabled.checked = !!s.hoverEnabled;
   els.includeNonBlank.checked = s.linkScope === 'all';
   els.list.value = s.list.join('\n');
-  els.hoverDelay.value = s.hoverDelay;
   els.locale.value = normalizeLocale(s.locale);
-  syncHoverUi(s.hoverEnabled);
 };
 
 const readForm = () => ({
   mode: getRadio(els.mode) || DEFAULTS.mode,
-  hoverEnabled: !!els.hoverEnabled.checked,
   linkScope: els.includeNonBlank.checked ? 'all' : 'blank-only',
   list: parseList(els.list.value),
-  hoverDelay: clampHoverDelay(els.hoverDelay.value),
   locale: normalizeLocale(els.locale.value),
 });
 
@@ -120,7 +86,6 @@ const save = async () => {
   }
   try {
     await chrome.storage.sync.set({ slpSettings: next });
-    syncHoverUi(next.hoverEnabled);
     flashSaved();
   } catch (err) {
     els.status.textContent = t('save_failed', 'Save failed: ') + err.message;
@@ -142,13 +107,6 @@ const init = async () => {
     const data = await chrome.storage.sync.get('slpSettings');
     if (data.slpSettings) {
       s = { ...DEFAULTS, ...data.slpSettings };
-      // Migrate old schema: `trigger: 'click' | 'hover'` → `hoverEnabled`.
-      if (
-        data.slpSettings.hoverEnabled === undefined &&
-        data.slpSettings.trigger === 'hover'
-      ) {
-        s.hoverEnabled = true;
-      }
     }
   } catch (_) {}
   render(s);
@@ -158,15 +116,15 @@ const init = async () => {
   for (const el of els.mode) {
     el.addEventListener('change', save);
   }
-  els.hoverEnabled.addEventListener('change', save);
   els.includeNonBlank.addEventListener('change', save);
   els.list.addEventListener('input', debouncedSave);
-  els.hoverDelay.addEventListener('input', debouncedSave);
-  els.hoverDelay.addEventListener('blur', save);
   els.locale.addEventListener('change', save);
 
   els.reset.addEventListener('click', async () => {
-    const msg = t('reset_confirm', 'Reset to defaults? The domain list will be cleared.');
+    const msg = t(
+      'reset_confirm',
+      'Reset to defaults? The domain list will be cleared.',
+    );
     if (!confirm(msg)) return;
     const next = { ...DEFAULTS };
     await chrome.storage.sync.set({ slpSettings: next });
@@ -174,34 +132,19 @@ const init = async () => {
     flashSaved();
   });
 
-  els.openSidePanel?.addEventListener('click', () => {
-    const origLabel = els.openSidePanel.textContent;
-    const failWith = (err) => {
-      console.warn('[SideLinkPreview] sidePanel.open:', err);
-      els.openSidePanel.textContent = t('open_side_panel_failed', 'Could not open — use toolbar icon');
-      setTimeout(() => {
-        els.openSidePanel.textContent = origLabel;
-      }, 2400);
-    };
-    if (ownWindowId == null) {
-      failWith(new Error('windowId not ready'));
+  // Cross-tab sync: when settings change in another window (a second
+  // options page, or chrome.storage.sync arriving from another device),
+  // re-render the form unless the user is actively typing in the textarea.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'sync' || !changes.slpSettings) return;
+    const next = { ...DEFAULTS, ...(changes.slpSettings.newValue || {}) };
+    if (document.activeElement === els.list) {
+      // User is mid-edit on the textarea; re-rendering would clobber
+      // their cursor / unsaved input. Skip — debouncedSave will reconcile
+      // soon enough.
       return;
     }
-    try {
-      const p = chrome.sidePanel.open({ windowId: ownWindowId });
-      if (p && typeof p.then === 'function') {
-        p.then(() => {
-          els.openSidePanel.textContent = t('side_panel_opened', 'Opened ✓');
-          els.openSidePanel.classList.add('ok');
-          setTimeout(() => {
-            els.openSidePanel.textContent = origLabel;
-            els.openSidePanel.classList.remove('ok');
-          }, 1800);
-        }).catch(failWith);
-      }
-    } catch (err) {
-      failWith(err);
-    }
+    render(next);
   });
 };
 

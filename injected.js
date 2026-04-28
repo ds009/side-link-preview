@@ -33,6 +33,19 @@
     }
   } catch (_) {}
 
+  // [F] Are we in the top frame of this tab? Outside the Side Panel we
+  // skip all hijacks in nested iframes (YouTube embeds, Disqus, ads,
+  // social widgets) so their internal window.open calls keep working.
+  let inTopFrame = false;
+  try {
+    inTopFrame = window === window.top;
+  } catch (_) {}
+
+  // In a nested third-party iframe outside the Side Panel: do nothing.
+  // Native window.open / frame-busting / referrer policy etc. all keep
+  // their normal behavior.
+  if (!inExtFrame && !inTopFrame) return;
+
   // A. Side Panel iframe: suppress frame-busting by spoofing top/parent to self.
   if (inExtFrame) {
     const selfWin = window.self;

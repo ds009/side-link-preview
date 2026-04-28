@@ -174,10 +174,18 @@ chrome.commands?.onCommand.addListener(async (command) => {
 // the toolbar icon is clicked.
 chrome.action?.onClicked.addListener(async (tab) => {
   if (!tab?.id || !tab?.windowId) return;
+  // Side-panel iframe cannot embed chrome://, chrome-extension://,
+  // devtools://, view-source:, about: etc. — opening the panel on those
+  // tabs would just show the empty state. Stay out of the way; the panel
+  // auto-disable in refreshSidePanelForTab() has already set enabled:false
+  // for this tab, and we don't want to overrule that just because the user
+  // happened to click the toolbar icon while parked on a system page.
+  const url = tab.url || tab.pendingUrl;
+  if (isSystemUrl(url)) return;
   try {
     // Re-enable in case our blacklist auto-disable closed the panel for this
     // tab. Toolbar click is an explicit user gesture, so honor it even on
-    // user-disabled hosts.
+    // user-disabled hosts (but never on system pages — see above).
     await chrome.sidePanel.setOptions({
       tabId: tab.id,
       path: `sidepanel.html?tabId=${tab.id}`,
@@ -207,6 +215,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg?.type !== 'OPEN_IN_SIDE_PANEL') return;
 
+  // Only http(s) URLs are previewable in the iframe. content.js already
+  // filters at click time; this is a defense-in-depth check.
+  if (!isHttpUrl(msg.url)) {
+    sendResponse({ ok: false, reason: 'unsupported scheme' });
+    return;
+  }
+
   const tabId = sender.tab?.id;
   const windowId = sender.tab?.windowId;
   if (!tabId || !windowId) {
@@ -228,14 +243,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       enabled: true,
     })
     .catch((err) => console.warn('[SideLinkPreview] setOptions:', err));
-
-  // Hover isn't a user gesture, so Chrome rejects sidePanel.open(). Only
-  // update storage here; if the Side Panel is already open, sidepanel.js
-  // watches storage and will navigate to the new URL automatically.
-  if (msg.trigger === 'hover') {
-    sendResponse({ ok: true, hover: true });
-    return;
-  }
 
   chrome.sidePanel
     .open({ tabId, windowId })

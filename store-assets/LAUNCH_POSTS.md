@@ -15,7 +15,7 @@ already trimmed to the platform's character / style limits.
 **Title (≤ 80 chars):**
 
 ```
-Show HN: Side Link Preview – Arc-style split view for stock Chrome
+Show HN: Side Link Preview – open every link in Chrome's Side Panel
 ```
 
 **Body (first comment by you):**
@@ -23,26 +23,31 @@ Show HN: Side Link Preview – Arc-style split view for stock Chrome
 ```
 Hi HN — author here.
 
-I missed Arc's split view enough to ship a tiny extension that does the same
-thing in stock Chrome: every target="_blank" link opens in Chrome's native
-Side Panel instead of a new tab. So you can read Hacker News on the left
-and the article you just clicked on the right, no Spaces, no new tabs, no
-TabFS.
+I wanted a split-view reading workflow without switching browsers, so I
+shipped a tiny extension that hijacks every target="_blank" click and
+routes it into Chrome's native Side Panel. Read the source on the left,
+read the linked article on the right, no new tabs.
 
 A few things I cared about:
 
 - Modifier-key bypass (⌘ / Ctrl / Shift / Alt + click) drops out to a real
   new tab — no fight with the page.
+- The Side Panel itself has Back / Forward / Refresh and an editable
+  address bar, so it actually feels like a real second browser pane.
+- 10 link-filtering rules skip the panel for downloads, login pages,
+  same-page anchors, mixed-content, localhost, etc., so it never
+  intercepts something it shouldn't.
 - exclude_matches prevents the content script from running on auth, SSO,
-  banking and payment hosts. I didn't want anyone's 2FA flow loaded inside
-  an iframe.
-- declarativeNetRequest is scoped to initiatorDomains: [chrome.runtime.id]
-  and resourceTypes: ["sub_frame"] only, so it only relaxes frame-blocking
-  headers for the panel's own iframe and never for normal browsing.
+  banking and payment hosts. I didn't want anyone's 2FA flow loaded
+  inside an iframe.
+- declarativeNetRequest is scoped to initiatorDomains:
+  [chrome.runtime.id] and resourceTypes: ["sub_frame"], so it only
+  relaxes frame-blocking headers for the panel's own iframe and never
+  for normal browsing.
 - No analytics, no telemetry, no ads. Settings sync via storage.sync.
 - 6 languages, auto light/dark.
 
-It's MIT-licensed and free. Feedback (especially "this is broken on site X")
+MIT-licensed and free. Feedback (especially "this is broken on site X")
 very welcome.
 
 Code: {{REPO_URL}}
@@ -61,20 +66,21 @@ Site: {{LANDING_URL}}
 **Title:**
 
 ```
-[Free + open source] Side Link Preview – open every link in Chrome's Side Panel (Arc-style split view)
+[Free + open source] Side Link Preview – open every link in Chrome's Side Panel
 ```
 
 **Body:**
 
 ```
-Built this because I switch between Chrome and Arc and missed having the
-Side Panel feel like a real second pane. It hijacks target="_blank" clicks
-(and window.open) and routes them into chrome.sidePanel instead of opening
-a new tab.
+Built this to make Chrome's Side Panel feel like a real second pane. It
+hijacks target="_blank" clicks (and window.open) and routes them into
+chrome.sidePanel instead of opening a new tab.
 
 What's in it:
-- Click or hover trigger, configurable delay
-- Per-domain blacklist / whitelist with wildcards
+- Side Panel with Back / Forward / Refresh + editable address bar
+- Per-domain blacklist / whitelist with wildcards (subdomain-aware)
+- Smart link filtering — downloads, logins, same-page anchors etc.
+  stay native and never enter the panel
 - Right-click → "Open link in Side Panel"
 - Alt+Shift+P to preview the current tab
 - ⌘ / Ctrl / Shift / Alt + click bypasses the panel
@@ -130,28 +136,28 @@ shortcut, right-click menu. MIT, no tracking.
 **Tagline (≤ 60 chars):**
 
 ```
-Arc-style split view for stock Chrome.
+Open every link in Chrome's Side Panel — split view.
 ```
 
 **Description (≤ 260 chars):**
 
 ```
-Side Link Preview opens every link inside Chrome's Side Panel — so you
-keep your tab on the left and read the linked page on the right.
-Per-domain rules, keyboard shortcut, dark mode, 6 languages. Free,
-open-source, no tracking.
+Side Link Preview opens every link inside Chrome's Side Panel — keep
+your tab on the left, read the linked page on the right. Mini browser
+controls, per-domain rules, keyboard shortcut, dark mode, 6 languages.
+Free, open-source, no tracking.
 ```
 
 **Maker comment (first comment after submitting):**
 
 ```
-Hey Product Hunt — I built this because I was tired of:
-1. Tab explosions every time I read docs.
-2. Arc being Mac-only and replacing my whole browser.
-3. Edge's split-screen requiring Edge.
+Hey Product Hunt — I built this because tab explosions while reading
+docs got out of hand and I wanted a split-view workflow without switching
+browsers.
 
-Side Link Preview just routes target="_blank" clicks into
-chrome.sidePanel instead of a new tab. That's it. Nothing else changes.
+Side Link Preview routes target="_blank" clicks into chrome.sidePanel
+instead of a new tab. That's it. Nothing else changes — modifier keys
+still do what you expect.
 
 Things I'd love feedback on:
 - Sites that fail to load in the panel (paste a URL and I'll look).
@@ -174,8 +180,8 @@ Built a free Chrome extension I now can't live without:
 
 every target="_blank" link opens in Chrome's Side Panel, not a new tab.
 
-Read source on the left, linked article on the right. Arc-style split
-view, on stock Chrome.
+Read the source on the left, the linked article on the right. Split-view
+reading, on stock Chrome.
 
 {{CWS_URL}}
 ```
@@ -183,7 +189,7 @@ view, on stock Chrome.
 **2/**
 ```
 - ⌘ / Ctrl / Shift / Alt + click → real new tab when you actually want one
-- Hover trigger if click feels too aggressive
+- Side Panel with Back / Forward / Refresh + editable address bar
 - Per-domain blacklist / whitelist with wildcards
 - Right-click any link → "Open in Side Panel"
 - Alt+Shift+P previews the current tab
@@ -195,6 +201,7 @@ view, on stock Chrome.
 - UI in EN / 中文 / FR / ES / DE / PT
 - No analytics, no tracking, no ads
 - Excludes auth + banking hosts so no 2FA flows ever load in an iframe
+- Smart link filtering: downloads, logins, mixed content stay native
 - Settings sync across your Chrome profile
 ```
 
@@ -220,9 +227,9 @@ linked article opens on the right. No tab explosion, no second monitor
 required.
 
 — Free, MIT-licensed, no tracking
-— Works on Chrome 119+ and Edge
+— Works on Chrome 119+ and Edge 119+
 — 6 UI languages, auto light/dark
-— Per-domain rules, keyboard shortcut, right-click menu
+— Per-domain rules, smart link filtering, keyboard shortcut, right-click menu
 
 Install: {{CWS_URL}}
 Source: {{REPO_URL}}
@@ -239,8 +246,8 @@ Hey — I'm shipping a tiny Chrome extension and looking for ~10 people to
 kick the tires before the public Web Store launch. Takes maybe 3 min.
 
 What it does: opens every outgoing link in Chrome's Side Panel, so you
-read source on the left + linked article on the right. Arc-style split
-view but on stock Chrome.
+read source on the left + linked article on the right. Split-view
+reading, on stock Chrome.
 
 Install (unlisted CWS link): {{CWS_URL}}
 
@@ -259,8 +266,8 @@ source: {{REPO_URL}}.
 ## Indie Hackers / Slack / Discord (medium-form)
 
 ```
-Title: Side Link Preview – a free Chrome extension I built to bring
-       Arc-style split view to stock Chrome
+Title: Side Link Preview – a free Chrome extension that opens every link
+       in the Side Panel for split-view reading
 
 Long story short: I wanted "click a link, read it side-by-side" without
 switching browsers. So I built it.
@@ -269,7 +276,7 @@ Stack: vanilla JS, Manifest V3, chrome.sidePanel + declarativeNetRequest.
 Source: {{REPO_URL}}.
 
 Things I'd love feedback on:
-- The settings UX (per-domain rules, hover delay, trigger mode)
+- The settings UX (per-domain rules, link scope)
 - Sites that fail to load in the iframe — those are the real blockers
 - Whether a $5 one-time Pro tier (multi-panel, AI summary, cross-device
   sync) sounds reasonable or annoying

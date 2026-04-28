@@ -2,7 +2,7 @@
   "name": "side-link-preview",
   "version": "0.9.0",
   "private": true,
-  "description": "Chrome extension that opens target=\"_blank\" links in the Side Panel — an Arc-style / Edge-style split view for stock Chrome.",
+  "description": "Chrome extension that opens target=\"_blank\" links in Chrome's Side Panel for split-view side-by-side reading.",
   "homepage": "https://github.com/ds009/side-link-preview",
   "license": "MIT",
   "scripts": {
@@ -12,10 +12,13 @@
     "format:check": "prettier --check \"**/*.{js,html,css,json,md}\"",
     "validate:json": "node -e \"for (const f of ['manifest.json', ...require('fs').readdirSync('locales').filter(x=>x.endsWith('.json')).map(x=>'locales/'+x)]) { JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('ok',f); }\"",
     "validate:locales": "node -e \"const fs=require('fs');const dir='locales';const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json'));const en=JSON.parse(fs.readFileSync(dir+'/en.json','utf8'));const ek=Object.keys(en).sort();let ok=true;for(const f of files){const k=Object.keys(JSON.parse(fs.readFileSync(dir+'/'+f,'utf8'))).sort();const m=ek.filter(x=>!k.includes(x));const e=k.filter(x=>!ek.includes(x));if(m.length||e.length){ok=false;console.log('FAIL',f,'missing:',m,'extra:',e);}else{console.log('ok  ',f,'('+k.length+' keys)');}}process.exit(ok?0:1);\"",
-    "zip": "mkdir -p dist && zip -r \"dist/side-link-preview-$(node -p \\\"require('./manifest.json').version\\\").zip\" manifest.json background.js content.js injected.js sidepanel.html sidepanel.js options.html options.js i18n.js locales icons PRIVACY.md LICENSE README.md -x '*.DS_Store' 'icons/icon-square.png'"
+    "screenshots": "node scripts/generate-screenshots.mjs",
+    "zip": "node scripts/zip.mjs"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
-    "prettier": "^3.2.5"
+    "prettier": "^3.2.5",
+    "puppeteer": "^24.42.0",
+    "sharp": "^0.34.5"
   }
 }
