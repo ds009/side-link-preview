@@ -302,18 +302,35 @@ const readInitialUrl = async () => {
   if (data[key]) load(data[key]);
 };
 
-// Inherit the parent tab's zoom factor so reading in the panel matches the
-// user's chosen page zoom. CSS `zoom` set on a single iframe element only
-// resizes the element's box in Chromium — it does NOT scale the rendered
-// content of a cross-origin sub-frame. Setting it on the root <html> does
-// propagate into descendant frames, so we apply the factor there. This
-// effectively mirrors how Chrome's per-tab zoom rescales everything below
-// the browser chrome (the panel toolbar gets bigger too, just like in-page
-// chrome would inside a regular tab).
+// Inherit the parent tab's zoom factor on the preview iframe. CSS `zoom`
+// (whether on the iframe or on <html>) does NOT propagate into a
+// cross-origin sub-frame's rendering pipeline in Chromium, so the only
+// reliable way to visually rescale the embedded page is to apply a CSS
+// transform to the <iframe> element and counter-size its box so that the
+// scaled output still fills its wrapper:
+//
+//   width  = 100% / factor
+//   height = 100% / factor
+//   transform = scale(factor)
+//
+// transform-origin: 0 0 keeps the top-left anchored so the layout doesn't
+// drift when the factor changes.
 const applyPanelZoom = (factor) => {
+  if (!frame) return;
   const f = Number(factor);
   if (!Number.isFinite(f) || f <= 0) return;
-  document.documentElement.style.zoom = String(f);
+  if (Math.abs(f - 1) < 0.001) {
+    frame.style.transform = '';
+    frame.style.transformOrigin = '';
+    frame.style.width = '';
+    frame.style.height = '';
+    return;
+  }
+  const inv = 100 / f;
+  frame.style.transformOrigin = '0 0';
+  frame.style.width = `${inv}%`;
+  frame.style.height = `${inv}%`;
+  frame.style.transform = `scale(${f})`;
 };
 
 const syncZoomFromTab = async () => {
