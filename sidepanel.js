@@ -302,9 +302,39 @@ const readInitialUrl = async () => {
   if (data[key]) load(data[key]);
 };
 
+// Inherit the parent tab's zoom factor on the preview iframe so reading in
+// the panel matches the user's chosen page zoom. CSS `zoom` is applied to
+// the iframe element only (not the toolbar) — that mirrors the way browser
+// zoom scales page content but leaves browser chrome alone, and avoids
+// blowing up the address bar / nav buttons at high zoom levels.
+const applyFrameZoom = (factor) => {
+  if (!frame) return;
+  const f = Number(factor);
+  if (!Number.isFinite(f) || f <= 0) return;
+  frame.style.zoom = String(f);
+};
+
+const syncZoomFromTab = async () => {
+  const id = await resolveTabId();
+  if (!id) return;
+  try {
+    const z = await chrome.tabs.getZoom(id);
+    applyFrameZoom(z);
+  } catch (_) {
+    // Some tabs (e.g. chrome:// internal pages) reject getZoom; leave at 1.
+  }
+};
+
+if (chrome.tabs?.onZoomChange) {
+  chrome.tabs.onZoomChange.addListener((info) => {
+    if (tabId && info.tabId === tabId) applyFrameZoom(info.newZoomFactor);
+  });
+}
+
 updateRefreshButton();
 
 readInitialUrl();
+syncZoomFromTab();
 
 chrome.storage.session.onChanged.addListener(async (changes) => {
   const id = await resolveTabId();
