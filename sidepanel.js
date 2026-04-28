@@ -302,59 +302,9 @@ const readInitialUrl = async () => {
   if (data[key]) load(data[key]);
 };
 
-// Inherit the parent tab's zoom factor on the preview iframe. CSS `zoom`
-// (whether on the iframe or on <html>) does NOT propagate into a
-// cross-origin sub-frame's rendering pipeline in Chromium, so the only
-// reliable way to visually rescale the embedded page is to apply a CSS
-// transform to the <iframe> element and counter-size its box so that the
-// scaled output still fills its wrapper:
-//
-//   width  = 100% / factor
-//   height = 100% / factor
-//   transform = scale(factor)
-//
-// transform-origin: 0 0 keeps the top-left anchored so the layout doesn't
-// drift when the factor changes.
-const applyPanelZoom = (factor) => {
-  if (!frame) return;
-  const f = Number(factor);
-  if (!Number.isFinite(f) || f <= 0) return;
-  if (Math.abs(f - 1) < 0.001) {
-    frame.style.transform = '';
-    frame.style.transformOrigin = '';
-    frame.style.width = '';
-    frame.style.height = '';
-    return;
-  }
-  const inv = 100 / f;
-  frame.style.transformOrigin = '0 0';
-  frame.style.width = `${inv}%`;
-  frame.style.height = `${inv}%`;
-  frame.style.transform = `scale(${f})`;
-};
-
-const syncZoomFromTab = async () => {
-  const id = await resolveTabId();
-  if (!id) return;
-  try {
-    const z = await chrome.tabs.getZoom(id);
-    applyPanelZoom(z);
-  } catch (_) {
-    // Some tabs (e.g. chrome:// internal pages) reject getZoom; leave at 1.
-  }
-};
-
-if (chrome.tabs?.onZoomChange) {
-  chrome.tabs.onZoomChange.addListener(async (info) => {
-    const id = await resolveTabId();
-    if (id && info.tabId === id) applyPanelZoom(info.newZoomFactor);
-  });
-}
-
 updateRefreshButton();
 
 readInitialUrl();
-syncZoomFromTab();
 
 chrome.storage.session.onChanged.addListener(async (changes) => {
   const id = await resolveTabId();
