@@ -302,16 +302,18 @@ const readInitialUrl = async () => {
   if (data[key]) load(data[key]);
 };
 
-// Inherit the parent tab's zoom factor on the preview iframe so reading in
-// the panel matches the user's chosen page zoom. CSS `zoom` is applied to
-// the iframe element only (not the toolbar) — that mirrors the way browser
-// zoom scales page content but leaves browser chrome alone, and avoids
-// blowing up the address bar / nav buttons at high zoom levels.
-const applyFrameZoom = (factor) => {
-  if (!frame) return;
+// Inherit the parent tab's zoom factor so reading in the panel matches the
+// user's chosen page zoom. CSS `zoom` set on a single iframe element only
+// resizes the element's box in Chromium — it does NOT scale the rendered
+// content of a cross-origin sub-frame. Setting it on the root <html> does
+// propagate into descendant frames, so we apply the factor there. This
+// effectively mirrors how Chrome's per-tab zoom rescales everything below
+// the browser chrome (the panel toolbar gets bigger too, just like in-page
+// chrome would inside a regular tab).
+const applyPanelZoom = (factor) => {
   const f = Number(factor);
   if (!Number.isFinite(f) || f <= 0) return;
-  frame.style.zoom = String(f);
+  document.documentElement.style.zoom = String(f);
 };
 
 const syncZoomFromTab = async () => {
@@ -319,15 +321,16 @@ const syncZoomFromTab = async () => {
   if (!id) return;
   try {
     const z = await chrome.tabs.getZoom(id);
-    applyFrameZoom(z);
+    applyPanelZoom(z);
   } catch (_) {
     // Some tabs (e.g. chrome:// internal pages) reject getZoom; leave at 1.
   }
 };
 
 if (chrome.tabs?.onZoomChange) {
-  chrome.tabs.onZoomChange.addListener((info) => {
-    if (tabId && info.tabId === tabId) applyFrameZoom(info.newZoomFactor);
+  chrome.tabs.onZoomChange.addListener(async (info) => {
+    const id = await resolveTabId();
+    if (id && info.tabId === id) applyPanelZoom(info.newZoomFactor);
   });
 }
 
