@@ -98,6 +98,36 @@
     } catch (_) {}
   }
 
+  // Forward zoom shortcuts up to the panel host. When the user clicks inside
+  // the iframe, keyboard focus moves into the cross-origin sub-frame and
+  // sidepanel.js's document-level keydown listener never sees these events.
+  // We listen here (in the iframe's ISOLATED world, where we still have
+  // access to the page's keydown events) and post a ZOOM message to the top
+  // frame so the panel can apply the transform regardless of focus state.
+  if (inSidePanel) {
+    document.addEventListener(
+      'keydown',
+      (e) => {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (e.altKey) return;
+        let direction = null;
+        if (e.key === '=' || e.key === '+') direction = 'in';
+        else if (e.key === '-' || e.key === '_') direction = 'out';
+        else if (e.key === '0') direction = 'reset';
+        if (!direction) return;
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          window.top.postMessage(
+            { __slp: 1, type: 'ZOOM', direction },
+            '*',
+          );
+        } catch (_) {}
+      },
+      true,
+    );
+  }
+
   // ---------- Back-to-top affordance ----------
   // For the Side Panel's primary iframe only: track scroll state and notify
   // the panel UI when the page is at least 2 viewports tall and has been

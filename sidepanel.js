@@ -481,6 +481,17 @@ window.addEventListener('message', (e) => {
     return;
   }
 
+  if (data.type === 'ZOOM') {
+    if (data.direction === 'in') {
+      setZoomForCurrent(snapToLevel(currentZoom, +1));
+    } else if (data.direction === 'out') {
+      setZoomForCurrent(snapToLevel(currentZoom, -1));
+    } else if (data.direction === 'reset') {
+      setZoomForCurrent(1);
+    }
+    return;
+  }
+
   if (data.type === 'SCROLL_STATE' && scrollTopBtn) {
     // Only react to scroll state from the iframe's top-level document, not
     // from a nested frame that might also have its own scroll.
