@@ -209,6 +209,22 @@
     }
   };
 
+  // [K] Bare-domain link: pathname is empty or "/". A link to a domain root
+  // is overwhelmingly a "leave this site for that site" navigation (logo
+  // link in a header, brand mentions in a paragraph, "Visit our website"
+  // CTAs) — almost never something the user wants to preview side-by-side.
+  // Query string and hash are ignored so `https://example.com/?ref=x` and
+  // `https://example.com/#top` also count as bare. Letting these go native
+  // avoids stranding a homepage in the panel that the user has to close.
+  const isBareDomain = (href) => {
+    try {
+      const u = new URL(href, location.href);
+      return u.pathname === '' || u.pathname === '/';
+    } catch (_) {
+      return false;
+    }
+  };
+
   // [E] Common download / media file extensions. Only matched on the URL
   // path (not the query string), so a server-driven download via
   // ?file=foo.zip will still go through the Side Panel — those are rare
@@ -259,6 +275,9 @@
     // Anchor / same-page links: let the browser handle them natively
     // (scroll to fragment, in-place query update, etc.).
     if (isSamePage(a.href)) return false;
+
+    // [K] Bare-domain link (homepage navigation) — see helper for rationale.
+    if (isBareDomain(a.href)) return false;
 
     // [E] Known downloadable / media extensions. Server might serve a
     // viewer page for some of these, but in practice the false-positive
@@ -452,6 +471,9 @@
     // Skip same-page window.open targets (rare but possible) so we don't
     // re-render the current page in the Side Panel for no reason.
     if (isSamePage(url)) return;
+    // Bare-domain window.open (e.g. a "Visit homepage" button) — same
+    // reasoning as the click path: leaving the site, not previewing.
+    if (isBareDomain(url)) return;
     // Destination host is user-disabled. injected.js already returned a fake
     // stub for window.open(), so we can't fall back to native popup behavior;
     // ask background to open it as a new tab instead — the user will at

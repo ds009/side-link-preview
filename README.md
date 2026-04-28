@@ -25,7 +25,7 @@ Click any link → it opens in Chrome's Side Panel on the right, side-by-side wi
 - **Modifier keys still do what you expect** — `⌘`/`Ctrl`, `⌘+⇧`/`Ctrl+⇧`, `⇧`, `⌥`/`Alt` always bypass the panel and behave like the browser default.
 - **Side-Panel address bar** with **Back / Forward / Refresh** buttons that appear once you have history; auto-collapses on narrow widths.
 - **In-panel loading indicator** + **single auto-retry** on transient embed failures, then a friendly "open in a new tab" fallback card.
-- **Smart link filtering (10 rules)** — same-page anchors, downloads, mixed content, login/OAuth pages, localhost, etc. all open natively instead of in the panel. Full list in [`content.js`](./content.js).
+- **Smart link filtering (11 rules)** — same-page anchors, bare-domain homepage links, downloads, mixed content, login/OAuth pages, localhost, etc. all open natively instead of in the panel. Full list in [`content.js`](./content.js).
 - **Per-site enable/disable** with subdomain-aware blacklist or whitelist mode, plus extensive built-in `exclude_matches` for sign-in / SSO / payment hosts.
 - **Right-click context menu** "Open link in Side Panel" — a one-shot bypass of every rule.
 - **Keyboard shortcut** `Alt+Shift+P` to open the current tab inside the Side Panel.
@@ -107,6 +107,7 @@ This works for both native `<a target="_blank">` clicks and links that route thr
 To keep the panel out of your way, the extension also **skips** Side-Panel preview when a link matches any of:
 
 - **Same page** — only the URL fragment / query differs from the current page.
+- **Bare-domain link** — `https://example.com` or `https://example.com/`. Domain-root links are virtually always "leave this site", not "preview content".
 - **`<a download>` attribute** — the page is asking for a download.
 - **`target="_top"` / `_parent`** — the page is asking to navigate out of a frame.
 - **`rel="external"` / `rel="alternate"`** — semantic markers for off-site or alternate-format links.
