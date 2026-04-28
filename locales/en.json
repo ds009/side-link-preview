@@ -18,8 +18,6 @@
   "reset_btn_title": "Restore default settings",
   "reset_confirm": "Reset to defaults? The domain list will be cleared.",
   "addr_placeholder": "URL",
-  "btn_go": "Go",
-  "btn_go_title": "Load",
   "btn_back_to_top_title": "Back to top",
   "btn_back_title": "Back",
   "btn_forward_title": "Forward",

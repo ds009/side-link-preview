@@ -9,7 +9,6 @@ const tipUrlEl = document.getElementById('tip-url');
 const tipOpenBtn = document.getElementById('tip-open');
 const tipCopyBtn = document.getElementById('tip-copy');
 const empty = document.getElementById('empty');
-const goBtn = document.getElementById('go');
 const settingsBtn = document.getElementById('settings');
 const openSettingsBtn = document.getElementById('open-settings');
 const scrollTopBtn = document.getElementById('scroll-top');
@@ -309,10 +308,6 @@ const normalizeUserInput = (raw) => {
   return trimmed;
 };
 
-goBtn.addEventListener('click', () => {
-  load(normalizeUserInput(addr.value));
-  addr.blur();
-});
 addr.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     load(normalizeUserInput(addr.value));

@@ -18,8 +18,6 @@
   "reset_btn_title": "恢复默认设置",
   "reset_confirm": "恢复默认设置？当前的域名列表会被清空。",
   "addr_placeholder": "网址",
-  "btn_go": "前往",
-  "btn_go_title": "加载",
   "btn_back_to_top_title": "回到顶部",
   "btn_back_title": "后退",
   "btn_forward_title": "前进",

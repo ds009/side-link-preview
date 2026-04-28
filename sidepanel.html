@@ -149,9 +149,9 @@
         align-items: center;
         justify-content: center;
       }
-      /* Editing state (input is focused) — hide every button except #go so
-         the input has room to breathe; back/forward/refresh/settings come
-         back as soon as the input loses focus. */
+      /* Editing state (input is focused) — hide every button so the input
+         has the full toolbar width; back/forward/refresh/zoom/settings come
+         back as soon as the input loses focus. Submit happens on Enter. */
       .bar.editing #back,
       .bar.editing #back.show,
       .bar.editing #forward,
@@ -526,13 +526,6 @@
         placeholder="URL"
         spellcheck="false"
       />
-      <button
-        id="go"
-        data-i18n="btn_go"
-        data-i18n-attr="title=btn_go_title,aria-label=btn_go_title"
-        title="Load"
-        aria-label="Load"
-      >Go</button>
       <button
         id="zoom-out"
         type="button"
