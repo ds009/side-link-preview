@@ -402,7 +402,7 @@
     }
   };
 
-  // ---------- click / mousedown / auxclick ----------
+  // ---------- click / mousedown ----------
   const handleClick = (e) => {
     // [F] Skip clicks inside nested third-party iframes (YouTube embeds,
     // Disqus, ads, social widgets, etc.). Top frame is always allowed,
@@ -415,7 +415,11 @@
     if (!inSidePanel) {
       if (!isEnabledForHost()) return;
     }
-    if (e.button !== 0 && e.type !== 'auxclick') return;
+    // Only intercept left-button clicks. Middle-click (button=1) is the
+    // browser convention for "open in new tab" and right-click (button=2)
+    // belongs to the context menu — both should always behave natively
+    // and never enter the Side Panel.
+    if (e.button !== 0) return;
 
     const a = findAnchor(e);
     if (!shouldIntercept(a)) return;
@@ -453,7 +457,6 @@
 
   document.addEventListener('mousedown', handleClick, true);
   document.addEventListener('click', handleClick, true);
-  document.addEventListener('auxclick', handleClick, true);
 
   // ---------- Echo of hijacked window.open (from injected.js) ----------
   window.addEventListener('__SLP_OPEN__', (e) => {
