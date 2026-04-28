@@ -136,12 +136,31 @@ const applyZoomTransform = (factor) => {
   frame.style.transform = `scale(${factor})`;
 };
 
-const updateZoomLabel = (factor) => {
+// Chrome-style transient indicator: the percent badge isn't pinned in the
+// toolbar; instead it appears for a moment after a zoom change (or when the
+// user hovers the +/- buttons) so the level is discoverable without taking
+// permanent space.
+const ZOOM_LABEL_TIMEOUT_MS = 1500;
+let zoomLabelTimer = null;
+const updateZoomLabelText = (factor) => {
   if (!zoomLevelBtn) return;
-  const pct = Math.round(factor * 100);
-  zoomLevelBtn.textContent = `${pct}%`;
-  // Keep the badge hidden at the default level so the toolbar stays clean.
-  zoomLevelBtn.classList.toggle('show', Math.abs(factor - 1) >= 0.001);
+  zoomLevelBtn.textContent = `${Math.round(factor * 100)}%`;
+};
+const flashZoomLabel = () => {
+  if (!zoomLevelBtn) return;
+  zoomLevelBtn.classList.add('show');
+  clearTimeout(zoomLabelTimer);
+  zoomLabelTimer = setTimeout(() => {
+    // Don't auto-hide while the user is hovering it (so reset stays clickable).
+    if (zoomLevelBtn.matches(':hover')) return;
+    zoomLevelBtn.classList.remove('show');
+  }, ZOOM_LABEL_TIMEOUT_MS);
+};
+const hideZoomLabelSoon = () => {
+  clearTimeout(zoomLabelTimer);
+  zoomLabelTimer = setTimeout(() => {
+    zoomLevelBtn?.classList.remove('show');
+  }, 250);
 };
 
 const persistZoomForHost = (host, factor) => {
@@ -164,7 +183,9 @@ const setZoom = (factor, { persist = true } = {}) => {
   const f = Math.min(3, Math.max(0.5, Number(factor) || 1));
   currentZoom = f;
   applyZoomTransform(f);
-  updateZoomLabel(f);
+  updateZoomLabelText(f);
+  // Explicit user action via toolbar → flash the badge.
+  flashZoomLabel();
   if (persist) persistZoomForHost(hostFromUrl(currentUrl), f);
 };
 
@@ -172,9 +193,14 @@ const applyZoomForUrl = (url) => {
   const host = hostFromUrl(url);
   const saved = host && zoomMap[host];
   const next = saved && Number.isFinite(saved) ? saved : 1;
+  const changed = Math.abs(currentZoom - next) >= 0.001;
   currentZoom = next;
   applyZoomTransform(next);
-  updateZoomLabel(next);
+  updateZoomLabelText(next);
+  // Flash only when restoring a non-default level on a fresh navigation, so
+  // the user is reminded that the page is rendered at a non-standard zoom.
+  // Default 100% navigations stay silent.
+  if (changed && Math.abs(next - 1) >= 0.001) flashZoomLabel();
 };
 
 const load = (url, { isRetry = false, fromHistory = false } = {}) => {
@@ -481,6 +507,17 @@ zoomInBtn?.addEventListener('click', () => {
   setZoom(snapToLevel(currentZoom, +1));
 });
 zoomLevelBtn?.addEventListener('click', () => setZoom(1));
+
+// Hover affordance: peek at the current zoom level by mousing over the +/-
+// buttons or the badge itself, even when no recent change has happened.
+[zoomInBtn, zoomOutBtn, zoomLevelBtn].forEach((btn) => {
+  btn?.addEventListener('mouseenter', () => {
+    updateZoomLabelText(currentZoom);
+    zoomLevelBtn?.classList.add('show');
+    clearTimeout(zoomLabelTimer);
+  });
+  btn?.addEventListener('mouseleave', hideZoomLabelSoon);
+});
 
 // Load the saved zoom map at boot. We don't gate panel rendering on this —
 // if it resolves after the first load() call, applyZoomForUrl runs again on
