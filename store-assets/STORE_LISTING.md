@@ -226,7 +226,7 @@ After the review passes:
 
 1. Create a GitHub release `v0.9.0` linking to the CWS page.
 2. Update `README.md` with the CWS install link at the top.
-3. Replace `REPLACE_WITH_EXTENSION_ID` in `docs/index.html` with the real ID.
+3. Replace `REPLACE_WITH_EXTENSION_ID` in `docs/index.html` with the real ID. (Done: `jpbekmkggadbfacnnlnkjhdkgaoonapn`)
 4. Announce — see `store-assets/LAUNCH_POSTS.md` (HN / Product Hunt /
    Reddit / Twitter / LinkedIn templates ready to copy).
 

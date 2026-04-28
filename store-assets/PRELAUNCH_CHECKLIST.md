@@ -127,19 +127,19 @@ that file already has every field drafted.
 
 ## 6. Replace the placeholder extension ID
 
-The repo currently has `REPLACE_WITH_EXTENSION_ID` in 5 spots — they only
-matter once Chrome assigns an ID at first publish. After your **first**
-upload, the dashboard shows the ID; do a single search-and-replace:
+Chrome assigned the extension ID **`jpbekmkggadbfacnnlnkjhdkgaoonapn`**
+on first publish. The placeholder has been replaced across the repo:
 
-- [ ] **[manual]** `README.md`
-- [ ] **[manual]** `docs/index.html`
-- [ ] **[manual]** `docs/README.md`
-- [ ] **[manual]** `store-assets/STORE_LISTING.md`
-- [ ] **[manual]** `store-assets/PRELAUNCH_CHECKLIST.md` (this file)
+- [x] **[manual]** `README.md`
+- [x] **[manual]** `docs/index.html`
+- [x] **[manual]** `docs/README.md`
+- [x] **[manual]** `store-assets/STORE_LISTING.md`
+- [x] **[manual]** `store-assets/PRELAUNCH_CHECKLIST.md` (this file)
+
+For reference, the one-liner used:
 
 ```bash
-# one-liner once you know the ID, e.g. abcdefghijklmnop:
-git grep -l REPLACE_WITH_EXTENSION_ID | xargs sed -i '' 's/REPLACE_WITH_EXTENSION_ID/abcdefghijklmnop/g'
+git grep -l REPLACE_WITH_EXTENSION_ID | xargs sed -i '' 's/REPLACE_WITH_EXTENSION_ID/jpbekmkggadbfacnnlnkjhdkgaoonapn/g'
 ```
 
 ## 7. Tag the release

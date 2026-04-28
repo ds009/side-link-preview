@@ -1,8 +1,7 @@
 # Side Link Preview
 
 <p>
-  <!-- TODO: replace REPLACE_WITH_EXTENSION_ID after the Web Store listing is approved -->
-  <a href="https://chromewebstore.google.com/detail/REPLACE_WITH_EXTENSION_ID">
+  <a href="https://chromewebstore.google.com/detail/jpbekmkggadbfacnnlnkjhdkgaoonapn">
     <img alt="Add to Chrome" src="https://img.shields.io/badge/Add%20to%20Chrome-Free-2563eb?logo=googlechrome&logoColor=white" />
   </a>
   <a href="https://ds009.github.io/side-link-preview/">
@@ -39,7 +38,7 @@ Click any link → it opens in Chrome's Side Panel on the right, side-by-side wi
 
 > ⚠️ Pending review — link will be live once the listing is approved.
 > The badge above and this link will then point to it:
-> `https://chromewebstore.google.com/detail/REPLACE_WITH_EXTENSION_ID`
+> `https://chromewebstore.google.com/detail/jpbekmkggadbfacnnlnkjhdkgaoonapn`
 
 **From source** (developer mode):
 

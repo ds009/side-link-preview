@@ -10,7 +10,7 @@ GitHub Pages. To enable it:
 5. Save. The URL appears within ~1 minute.
 
 After the Chrome Web Store listing is approved, replace
-`REPLACE_WITH_EXTENSION_ID` in `index.html` with the real extension ID
+`jpbekmkggadbfacnnlnkjhdkgaoonapn` in `index.html` with the real extension ID
 (it shows up in the Developer Dashboard once published).
 
 The favicon and inline logo reference `icons/icon-128.png`. GitHub Pages
