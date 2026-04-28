@@ -17,6 +17,9 @@ const backBtn = document.getElementById('back');
 const forwardBtn = document.getElementById('forward');
 const refreshBtn = document.getElementById('refresh');
 const loader = document.getElementById('loader');
+const zoomInBtn = document.getElementById('zoom-in');
+const zoomOutBtn = document.getElementById('zoom-out');
+const zoomLevelBtn = document.getElementById('zoom-level');
 
 const showLoader = () => loader?.classList.add('show');
 const hideLoader = () => loader?.classList.remove('show');
@@ -80,6 +83,100 @@ const clearBlockTimer = () => {
 
 const hideTip = () => tip.classList.remove('show');
 
+// ---------- per-site zoom ----------
+// Visual scaling of the preview iframe via CSS transform. Layout-wise the
+// iframe occupies 1/factor of its wrapper, but the GPU composites it back
+// up to fill the wrapper, scaling the embedded cross-origin page along
+// with it. transform-origin 0,0 keeps the top-left anchored.
+//
+// Triggered exclusively by the toolbar +/-/% buttons (no keyboard hooks),
+// so the focus quirks of side-panel WebContents and cross-origin iframes
+// don't apply: a button click delivers a real, deterministic event.
+//
+// Persisted per host in chrome.storage.local under `slpZoomMap`.
+const ZOOM_LEVELS = [
+  0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3,
+];
+const ZOOM_MAP_KEY = 'slpZoomMap';
+let zoomMap = {};
+let currentZoom = 1;
+let zoomPersistTimer = null;
+
+const hostFromUrl = (url) => {
+  try {
+    return new URL(url).hostname || '';
+  } catch (_) {
+    return '';
+  }
+};
+
+const snapToLevel = (factor, dir) => {
+  if (dir > 0) {
+    return ZOOM_LEVELS.find((l) => l > factor + 0.001) ?? ZOOM_LEVELS.at(-1);
+  }
+  return (
+    [...ZOOM_LEVELS].reverse().find((l) => l < factor - 0.001) ??
+    ZOOM_LEVELS[0]
+  );
+};
+
+const applyZoomTransform = (factor) => {
+  if (!frame) return;
+  if (Math.abs(factor - 1) < 0.001) {
+    frame.style.transform = '';
+    frame.style.transformOrigin = '';
+    frame.style.width = '';
+    frame.style.height = '';
+    return;
+  }
+  const inv = 100 / factor;
+  frame.style.transformOrigin = '0 0';
+  frame.style.width = `${inv}%`;
+  frame.style.height = `${inv}%`;
+  frame.style.transform = `scale(${factor})`;
+};
+
+const updateZoomLabel = (factor) => {
+  if (!zoomLevelBtn) return;
+  const pct = Math.round(factor * 100);
+  zoomLevelBtn.textContent = `${pct}%`;
+  // Keep the badge hidden at the default level so the toolbar stays clean.
+  zoomLevelBtn.classList.toggle('show', Math.abs(factor - 1) >= 0.001);
+};
+
+const persistZoomForHost = (host, factor) => {
+  if (!host) return;
+  if (Math.abs(factor - 1) < 0.001) {
+    delete zoomMap[host];
+  } else {
+    zoomMap[host] = factor;
+  }
+  // Debounce — rapid +/- clicks shouldn't spam storage writes.
+  clearTimeout(zoomPersistTimer);
+  zoomPersistTimer = setTimeout(() => {
+    chrome.storage.local
+      .set({ [ZOOM_MAP_KEY]: zoomMap })
+      .catch((err) => console.warn('[SideLinkPreview] zoom persist:', err));
+  }, 250);
+};
+
+const setZoom = (factor, { persist = true } = {}) => {
+  const f = Math.min(3, Math.max(0.5, Number(factor) || 1));
+  currentZoom = f;
+  applyZoomTransform(f);
+  updateZoomLabel(f);
+  if (persist) persistZoomForHost(hostFromUrl(currentUrl), f);
+};
+
+const applyZoomForUrl = (url) => {
+  const host = hostFromUrl(url);
+  const saved = host && zoomMap[host];
+  const next = saved && Number.isFinite(saved) ? saved : 1;
+  currentZoom = next;
+  applyZoomTransform(next);
+  updateZoomLabel(next);
+};
+
 const load = (url, { isRetry = false, fromHistory = false } = {}) => {
   if (!url) return;
   currentUrl = url;
@@ -113,6 +210,9 @@ const load = (url, { isRetry = false, fromHistory = false } = {}) => {
   hideTip();
   empty.classList.add('hidden');
   frame.style.display = '';
+  // Restore the user's saved per-site zoom for this host before painting,
+  // so a previously zoomed page comes back at the same level on revisit.
+  applyZoomForUrl(url);
   showLoader();
   // On retry the URL is identical, so a plain `frame.src = url` would be a
   // no-op. Bounce through about:blank to force a real fresh navigation.
@@ -369,4 +469,38 @@ scrollTopBtn?.addEventListener('click', () => {
   } catch (err) {
     console.warn('[SideLinkPreview] postMessage SCROLL_TOP:', err);
   }
+});
+
+// Toolbar zoom controls. Click handlers are deterministic — they don't depend
+// on keyboard focus reaching the panel, which is unreliable for side-panel
+// WebContents and cross-origin iframes.
+zoomOutBtn?.addEventListener('click', () => {
+  setZoom(snapToLevel(currentZoom, -1));
+});
+zoomInBtn?.addEventListener('click', () => {
+  setZoom(snapToLevel(currentZoom, +1));
+});
+zoomLevelBtn?.addEventListener('click', () => setZoom(1));
+
+// Load the saved zoom map at boot. We don't gate panel rendering on this —
+// if it resolves after the first load() call, applyZoomForUrl runs again on
+// the next navigation and corrects the level.
+chrome.storage.local
+  .get(ZOOM_MAP_KEY)
+  .then((data) => {
+    if (data && data[ZOOM_MAP_KEY] && typeof data[ZOOM_MAP_KEY] === 'object') {
+      zoomMap = data[ZOOM_MAP_KEY];
+      if (currentUrl) applyZoomForUrl(currentUrl);
+    }
+  })
+  .catch((err) => console.warn('[SideLinkPreview] zoom load:', err));
+
+// Cross-panel sync: if another open panel changes the zoom for the same
+// host, mirror it here so multi-window users don't see stale levels.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  const change = changes[ZOOM_MAP_KEY];
+  if (!change) return;
+  zoomMap = change.newValue || {};
+  if (currentUrl) applyZoomForUrl(currentUrl);
 });
