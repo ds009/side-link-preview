@@ -6,6 +6,46 @@
     locale: 'en',
   };
 
+  // When the extension is reloaded/updated while a tab is still open, every
+  // content script that was injected before the reload becomes "orphaned":
+  // chrome.runtime.id flips to undefined and any sendMessage call throws
+  // "Extension context invalidated." That's expected Chromium behaviour, not
+  // a real failure — silence it and stop trying so we don't spam the page's
+  // console. Real production errors (network down, no listener, etc.) still
+  // surface as warnings.
+  let runtimeAlive = true;
+  const isContextInvalidated = (err) => {
+    if (!err) return false;
+    const msg = err.message || String(err);
+    return /context invalidated|context invalid/i.test(msg);
+  };
+  const safeSendMessage = (msg, cb) => {
+    if (!runtimeAlive || !chrome.runtime?.id) {
+      runtimeAlive = false;
+      return;
+    }
+    try {
+      chrome.runtime.sendMessage(msg, (resp) => {
+        const err = chrome.runtime.lastError;
+        if (err) {
+          if (isContextInvalidated(err)) {
+            runtimeAlive = false;
+            return;
+          }
+          console.warn('[SideLinkPreview] sendMessage:', err.message);
+          return;
+        }
+        if (typeof cb === 'function') cb(resp);
+      });
+    } catch (err) {
+      if (isContextInvalidated(err)) {
+        runtimeAlive = false;
+        return;
+      }
+      console.warn('[SideLinkPreview] sendMessage threw:', err);
+    }
+  };
+
   // Detect whether this frame is embedded inside the extension's Side Panel.
   // content.js runs in the ISOLATED world, so the window.top / parent values
   // read here are not polluted by injected.js's MAIN-world spoofing of
@@ -385,21 +425,7 @@
       return;
     }
 
-    try {
-      chrome.runtime.sendMessage(
-        { type: 'OPEN_IN_SIDE_PANEL', url, trigger },
-        () => {
-          if (chrome.runtime.lastError) {
-            console.warn(
-              '[SideLinkPreview] sendMessage:',
-              chrome.runtime.lastError.message,
-            );
-          }
-        },
-      );
-    } catch (err) {
-      console.warn('[SideLinkPreview] sendMessage threw:', err);
-    }
+    safeSendMessage({ type: 'OPEN_IN_SIDE_PANEL', url, trigger });
   };
 
   // ---------- click / mousedown ----------
@@ -483,11 +509,7 @@
     // least see the page somewhere.
     const dest = destHostOf(url);
     if (dest && !isHostEnabled(dest)) {
-      try {
-        chrome.runtime.sendMessage({ type: 'OPEN_IN_NEW_TAB', url }, () => {
-          void chrome.runtime.lastError;
-        });
-      } catch (_) {}
+      safeSendMessage({ type: 'OPEN_IN_NEW_TAB', url });
       return;
     }
     // Originated from window.open inside a user gesture — treat as a click.
