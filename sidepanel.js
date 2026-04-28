@@ -17,7 +17,6 @@ const backBtn = document.getElementById('back');
 const forwardBtn = document.getElementById('forward');
 const refreshBtn = document.getElementById('refresh');
 const loader = document.getElementById('loader');
-const zoomToast = document.getElementById('zoom-toast');
 
 const showLoader = () => loader?.classList.add('show');
 const hideLoader = () => loader?.classList.remove('show');
@@ -81,132 +80,6 @@ const clearBlockTimer = () => {
 
 const hideTip = () => tip.classList.remove('show');
 
-// ---------- per-site zoom ----------
-// Independent panel zoom: Cmd/Ctrl + +/-/0 inside the side panel adjusts the
-// preview iframe's scale without touching the parent tab. Persisted per host
-// in chrome.storage.local under `slpZoomMap` so revisiting the same site
-// later restores the level the user picked.
-//
-// We can't use CSS `zoom` here — neither on the iframe element nor on <html>
-// — because Chromium does not propagate either onto a cross-origin sub-frame's
-// rendering pipeline. Instead we apply a counter-sized CSS transform:
-//
-//     width  = 100% / factor
-//     height = 100% / factor
-//     transform = scale(factor)
-//     transform-origin = 0 0
-//
-// Layout-wise the iframe's box is 1/factor of the wrapper, but the GPU
-// composites it back up to fill the wrapper, scaling the embedded page along
-// with it. transform-origin 0,0 keeps the top-left anchored.
-const ZOOM_LEVELS = [
-  0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3,
-];
-const ZOOM_MAP_KEY = 'slpZoomMap';
-let zoomMap = {};
-let currentZoom = 1;
-let zoomToastTimer = null;
-let zoomPersistTimer = null;
-
-const hostFromUrl = (url) => {
-  try {
-    return new URL(url).hostname || '';
-  } catch (_) {
-    return '';
-  }
-};
-
-const snapToLevel = (factor, dir) => {
-  // dir: +1 = next-higher, -1 = next-lower, 0 = nearest
-  if (dir === 0) {
-    let nearest = ZOOM_LEVELS[0];
-    let diff = Math.abs(factor - nearest);
-    for (const lvl of ZOOM_LEVELS) {
-      const d = Math.abs(factor - lvl);
-      if (d < diff) {
-        diff = d;
-        nearest = lvl;
-      }
-    }
-    return nearest;
-  }
-  if (dir > 0) {
-    return ZOOM_LEVELS.find((l) => l > factor + 0.001) ?? ZOOM_LEVELS.at(-1);
-  }
-  return [...ZOOM_LEVELS].reverse().find((l) => l < factor - 0.001) ?? ZOOM_LEVELS[0];
-};
-
-const showZoomToast = (factor) => {
-  if (!zoomToast) return;
-  zoomToast.textContent = `${Math.round(factor * 100)}%`;
-  zoomToast.classList.add('show');
-  clearTimeout(zoomToastTimer);
-  zoomToastTimer = setTimeout(() => {
-    zoomToast.classList.remove('show');
-  }, 900);
-};
-
-const applyZoomTransform = (factor) => {
-  if (!frame) return;
-  if (Math.abs(factor - 1) < 0.001) {
-    frame.style.transform = '';
-    frame.style.transformOrigin = '';
-    frame.style.width = '';
-    frame.style.height = '';
-    return;
-  }
-  const inv = 100 / factor;
-  frame.style.transformOrigin = '0 0';
-  frame.style.width = `${inv}%`;
-  frame.style.height = `${inv}%`;
-  frame.style.transform = `scale(${factor})`;
-};
-
-const persistZoomForHost = (host, factor) => {
-  if (!host) return;
-  if (Math.abs(factor - 1) < 0.001) {
-    delete zoomMap[host];
-  } else {
-    zoomMap[host] = factor;
-  }
-  // Debounce writes — rapid keypress sequences shouldn't hammer storage.
-  clearTimeout(zoomPersistTimer);
-  zoomPersistTimer = setTimeout(() => {
-    chrome.storage.local
-      .set({ [ZOOM_MAP_KEY]: zoomMap })
-      .catch((err) => console.warn('[SideLinkPreview] zoom persist:', err));
-  }, 250);
-};
-
-const setZoomForCurrent = (factor, { persist = true } = {}) => {
-  const f = Math.min(3, Math.max(0.5, Number(factor) || 1));
-  currentZoom = f;
-  applyZoomTransform(f);
-  showZoomToast(f);
-  if (persist) persistZoomForHost(hostFromUrl(currentUrl), f);
-};
-
-const applyZoomForUrl = (url) => {
-  const host = hostFromUrl(url);
-  const saved = host && zoomMap[host];
-  const next = saved && Number.isFinite(saved) ? saved : 1;
-  currentZoom = next;
-  applyZoomTransform(next);
-};
-
-// Load saved zoom map up front so the first navigation already gets the right
-// level. We don't gate panel boot on this — if it resolves after the iframe
-// loads, applyZoomForUrl just gets called again the next time load() fires.
-chrome.storage.local
-  .get(ZOOM_MAP_KEY)
-  .then((data) => {
-    if (data && data[ZOOM_MAP_KEY] && typeof data[ZOOM_MAP_KEY] === 'object') {
-      zoomMap = data[ZOOM_MAP_KEY];
-      if (currentUrl) applyZoomForUrl(currentUrl);
-    }
-  })
-  .catch((err) => console.warn('[SideLinkPreview] zoom load:', err));
-
 const load = (url, { isRetry = false, fromHistory = false } = {}) => {
   if (!url) return;
   currentUrl = url;
@@ -240,10 +113,6 @@ const load = (url, { isRetry = false, fromHistory = false } = {}) => {
   hideTip();
   empty.classList.add('hidden');
   frame.style.display = '';
-  // Restore the user's saved per-site zoom level for this host. Called before
-  // setting frame.src so the visual scale is in place by the time the iframe
-  // starts painting.
-  applyZoomForUrl(url);
   showLoader();
   // On retry the URL is identical, so a plain `frame.src = url` would be a
   // no-op. Bounce through about:blank to force a real fresh navigation.
@@ -481,17 +350,6 @@ window.addEventListener('message', (e) => {
     return;
   }
 
-  if (data.type === 'ZOOM') {
-    if (data.direction === 'in') {
-      setZoomForCurrent(snapToLevel(currentZoom, +1));
-    } else if (data.direction === 'out') {
-      setZoomForCurrent(snapToLevel(currentZoom, -1));
-    } else if (data.direction === 'reset') {
-      setZoomForCurrent(1);
-    }
-    return;
-  }
-
   if (data.type === 'SCROLL_STATE' && scrollTopBtn) {
     // Only react to scroll state from the iframe's top-level document, not
     // from a nested frame that might also have its own scroll.
@@ -511,43 +369,4 @@ scrollTopBtn?.addEventListener('click', () => {
   } catch (err) {
     console.warn('[SideLinkPreview] postMessage SCROLL_TOP:', err);
   }
-});
-
-// Keyboard zoom: Ctrl/Cmd + + / - / 0 inside the side panel adjusts the
-// preview iframe's scale. We intercept these only when the address bar is
-// not focused, so editing a URL doesn't accidentally trigger zoom. We
-// preventDefault so Chrome doesn't try to apply its own page zoom to the
-// extension page itself (which would scale the panel chrome instead).
-document.addEventListener(
-  'keydown',
-  (e) => {
-    if (!(e.ctrlKey || e.metaKey)) return;
-    if (e.altKey) return;
-    if (document.activeElement === addr) return;
-    // `=` is the unshifted key for `+` on US layouts; accept both. NumpadAdd
-    // and NumpadSubtract emit the punctuation directly.
-    if (e.key === '=' || e.key === '+') {
-      e.preventDefault();
-      setZoomForCurrent(snapToLevel(currentZoom, +1));
-    } else if (e.key === '-' || e.key === '_') {
-      e.preventDefault();
-      setZoomForCurrent(snapToLevel(currentZoom, -1));
-    } else if (e.key === '0') {
-      e.preventDefault();
-      setZoomForCurrent(1);
-    }
-  },
-  // Capture so we beat any other in-document handlers and Chrome's default
-  // page-zoom shortcut targeting the extension page.
-  true,
-);
-
-// Cross-tab sync: if the user opens the same site in another panel instance
-// and changes the zoom there, mirror it here without requiring a reload.
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local') return;
-  const change = changes[ZOOM_MAP_KEY];
-  if (!change) return;
-  zoomMap = change.newValue || {};
-  if (currentUrl) applyZoomForUrl(currentUrl);
 });
