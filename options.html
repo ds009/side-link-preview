@@ -427,6 +427,58 @@
       </section>
 
       <section>
+        <h2 data-i18n="section_trigger">Trigger</h2>
+        <p class="hint" data-i18n="trigger_hint">
+          Clicking a link always opens it in the side panel. Enable the toggle
+          below to additionally get a preview automatically when you hover a
+          link longer than the delay.
+        </p>
+        <label class="toggle">
+          <input type="checkbox" id="hoverEnabled" />
+          <span data-i18n="trigger_hover_label">
+            Also preview on hover
+          </span>
+        </label>
+        <div class="inline" id="hoverDelayRow">
+          <span data-i18n="hover_delay_label">Hover delay</span>
+          <input
+            id="hoverDelay"
+            type="number"
+            min="100"
+            max="5000"
+            step="50"
+          />
+          <span data-i18n="hover_delay_unit">ms</span>
+        </div>
+        <div class="callout" id="hoverNote" hidden>
+          <span data-i18n="hover_note">
+            Hover preview requires the side panel to already be open. Click the
+            button below to open it now — you only need to do this once per
+            browser window.
+          </span>
+          <button
+            id="openSidePanel"
+            type="button"
+            class="callout-btn"
+            data-i18n="open_side_panel_btn"
+          >
+            Open side panel now
+          </button>
+        </div>
+        <div
+          class="callout info"
+          id="clickNote"
+          data-i18n-html="trigger_click_note_html"
+        >
+          Want a link to <strong>skip</strong> the Side Panel? Hold
+          <kbd>⌘</kbd> / <kbd>Ctrl</kbd> for a new tab, <kbd>⇧</kbd> for a new
+          window, or <kbd>⌥</kbd> Option / <kbd>Alt</kbd> to open in the
+          current tab. To always skip a whole site, add its domain under
+          <em>Scope</em> above.
+        </div>
+      </section>
+
+      <section>
         <h2 data-i18n="section_link_scope">Link scope</h2>
         <p class="hint" data-i18n-html="link_scope_hint_html">
           By default only <code>target="_blank"</code> links (the ones a page
@@ -440,17 +492,6 @@
             Also open non-_blank links in the side panel
           </span>
         </label>
-        <div
-          class="callout info"
-          id="clickNote"
-          data-i18n-html="trigger_click_note_html"
-        >
-          Want a link to <strong>skip</strong> the Side Panel? Hold
-          <kbd>⌘</kbd> / <kbd>Ctrl</kbd> for a new tab, <kbd>⇧</kbd> for a new
-          window, or <kbd>⌥</kbd> Option / <kbd>Alt</kbd> to open in the
-          current tab. To always skip a whole site, add its domain under
-          <em>Scope</em> above.
-        </div>
       </section>
 
       <footer>

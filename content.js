@@ -2,6 +2,8 @@
   const DEFAULTS = {
     mode: 'blacklist',
     list: [],
+    hoverEnabled: false,
+    hoverDelay: 500,
     linkScope: 'blank-only',
     locale: 'en',
   };
@@ -164,6 +166,13 @@
   const applySettings = (raw) => {
     settings = { ...DEFAULTS, ...(raw || {}) };
     if (!Array.isArray(settings.list)) settings.list = [];
+    // Back-compat: an older schema used `trigger: 'click' | 'hover'`; the
+    // current one is the boolean `hoverEnabled`. If we see a value sync'd
+    // down from a stale install, translate it forward so the toggle just
+    // works after upgrade.
+    if (raw && raw.hoverEnabled === undefined && raw.trigger === 'hover') {
+      settings.hoverEnabled = true;
+    }
     announceHostState();
   };
 
@@ -483,6 +492,56 @@
 
   document.addEventListener('mousedown', handleClick, true);
   document.addEventListener('click', handleClick, true);
+
+  // ---------- hover ----------
+  // Optional hover-to-preview. Off by default; users opt in from the
+  // settings page. Inside the Side Panel itself we never trigger on hover —
+  // the panel's iframe is already showing one preview, hovering links there
+  // shouldn't fire another navigation. Disabled hosts are skipped through
+  // isEnabledForHost(), and modifier keys (Cmd/Ctrl/Alt/Shift) bypass the
+  // preview so the user can still mouse over links to read tooltip URLs
+  // without triggering a load.
+  let hoverTimer = null;
+  let hoverAnchor = null;
+
+  const clearHover = () => {
+    clearTimeout(hoverTimer);
+    hoverTimer = null;
+    hoverAnchor = null;
+  };
+
+  const handleOver = (e) => {
+    if (inSidePanel) return;
+    if (!settings.hoverEnabled) return;
+    if (!isEnabledForHost()) return;
+    if (hasModifier(e)) return;
+
+    const a = findAnchor(e);
+    if (!shouldIntercept(a)) {
+      if (hoverAnchor && !hoverAnchor.contains(e.target)) clearHover();
+      return;
+    }
+    if (a === hoverAnchor) return;
+
+    clearTimeout(hoverTimer);
+    hoverAnchor = a;
+    const url = a.href;
+    const delay = Math.max(50, Number(settings.hoverDelay) || 500);
+    hoverTimer = setTimeout(() => {
+      sendOpen(url, 'hover');
+    }, delay);
+  };
+
+  const handleOut = (e) => {
+    if (!settings.hoverEnabled) return;
+    if (!hoverAnchor) return;
+    const to = e.relatedTarget;
+    if (to && hoverAnchor.contains(to)) return;
+    clearHover();
+  };
+
+  document.addEventListener('mouseover', handleOver, true);
+  document.addEventListener('mouseout', handleOut, true);
 
   // ---------- Echo of hijacked window.open (from injected.js) ----------
   window.addEventListener('__SLP_OPEN__', (e) => {
