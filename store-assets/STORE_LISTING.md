@@ -41,6 +41,7 @@ WHAT IT DOES
 
 KEY FEATURES
 • Side Panel address bar with Back / Forward / Refresh — works exactly like a tiny browser inside the panel
+• Per-site zoom: in-panel +/− buttons remember your preferred zoom for each domain
 • Auto-retry once on transient embed failures, then a clear "open in a new tab" fallback card
 • Per-domain blacklist or whitelist with subdomain-aware matching and wildcard support
 • Smart link filtering: same-page anchors, downloads, login/OAuth pages, mixed content, localhost, and more open natively instead of in the panel
@@ -59,10 +60,10 @@ PRIVACY
 • Full policy: https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
 
 WHO IT'S FOR
-• People who moved from Arc back to Chrome and miss split-view reading
-• Edge users who want side-by-side browsing on every Chrome profile
-• Researchers, students, lawyers — anyone who reads a long article while opening 20 sub-links
-• Engineers following links across docs, PRs, and Stack Overflow
+• Anyone who wants split-view, side-by-side reading on stock Chrome
+• Researchers, students and lawyers who read a long article while opening many sub-links
+• Engineers who follow link chains across docs, pull requests and Q&A sites without piling up tabs
+• Readers who prefer their original page to stay visible while skimming a referenced source
 
 REQUIREMENTS
 Chrome 119 or later (Side Panel API). Also works on Microsoft Edge 119+.
@@ -182,13 +183,16 @@ Certify:
 | Asset | Size | Status |
 | --- | --- | --- |
 | Icon | 128×128 | ✅ `icons/icon-128.png` |
-| Small promo tile | 440×280 | ⬜ TODO |
-| Marquee promo tile | 1400×560 | ⬜ Optional, skip for first release |
-| Screenshot 1 — "Click any link, read it side-by-side" | 1280×800 | ⬜ TODO |
-| Screenshot 2 — "Address bar with Back / Forward / Refresh" | 1280×800 | ⬜ TODO |
-| Screenshot 3 — "Per-site blacklist / whitelist" | 1280×800 | ⬜ TODO |
-| Screenshot 4 — "Modifier keys still do what you expect" | 1280×800 | ⬜ TODO |
-| Screenshot 5 — "Smart link filtering" | 1280×800 | ⬜ Optional |
+| Small promo tile | 440×280 | ✅ `store-assets/promo-small-tile-440x280.png` |
+| Marquee promo tile | 1400×560 | ✅ `store-assets/promo-marquee-1400x560.png` (optional, skip if you prefer) |
+| Screenshot 1 — "Click any link, read it side-by-side" | 1280×800 | ✅ `store-assets/screenshot-1.png` |
+| Screenshot 2 — "Address bar with Back / Forward / Refresh + per-site zoom" | 1280×800 | ✅ `store-assets/screenshot-2.png` |
+| Screenshot 3 — "Per-site blacklist / whitelist" | 1280×800 | ✅ `store-assets/screenshot-3.png` |
+| Screenshot 4 — "Modifier keys still do what you expect" | 1280×800 | ✅ `store-assets/screenshot-4.png` |
+| Screenshot 5 — "Smart link filtering" | 1280×800 | ✅ `store-assets/screenshot-5.png` (optional) |
+
+> Regenerate at any time with `npm run screenshots`. The script bakes
+> captions and frames into 1280×800 PNGs ready to upload.
 
 Naming convention to keep inside `store-assets/`:
 `tile-440x280.png`, `screenshot-1.png` … `screenshot-5.png`.
@@ -261,6 +265,7 @@ Side Link Preview 让原生 Chrome 拥有真正的分屏阅读体验。所有原
 
 主要功能
 • 侧栏自带地址栏 + 后退 / 前进 / 刷新按钮，像一个迷你浏览器
+• 按站点缩放：侧栏内置 +/− 按钮，每个域名独立记忆缩放比例
 • 加载失败自动重试一次，再失败则显示「在新标签页打开」的兜底卡片
 • 按域名黑 / 白名单，支持子域名匹配和通配符
 • 智能链接过滤：同页锚点、下载、登录页、混合内容、localhost 等都自动走原生行为，不进侧栏
@@ -278,10 +283,10 @@ Side Link Preview 让原生 Chrome 拥有真正的分屏阅读体验。所有原
 • 完整隐私政策：https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
 
 适用人群
-• 怀念 Arc 分屏体验、但希望留在 Chrome 的用户
-• 喜欢 Edge 双页并排浏览的用户
-• 经常一边读文章、一边打开 20 个标签的研究者
-• 在文档、PR、Stack Overflow 之间频繁跳转的开发者
+• 想在原生 Chrome 中获得并排分屏阅读体验的用户
+• 一边读长文一边打开很多关联链接的研究者、学生、律师
+• 在文档、PR、问答站点之间反复跳转的开发者
+• 希望阅读时原文始终可见、只用侧栏扫一眼参考资料的用户
 
 要求
 Chrome 119 或以上。同样适用于 Microsoft Edge 119+。
@@ -317,6 +322,7 @@ CE QUE FAIT L'EXTENSION
 
 FONCTIONNALITÉS CLÉS
 • Barre d'adresse intégrée avec Précédent / Suivant / Recharger
+• Zoom par site : boutons +/− dans le panneau, niveau mémorisé pour chaque domaine
 • Re-essai automatique en cas d'échec d'intégration, puis carte « ouvrir dans un nouvel onglet »
 • Listes blanche / noire par domaine (sous-domaines + jokers)
 • Filtrage de liens intelligent : ancres dans la page, téléchargements, pages de login, contenu mixte, localhost — tout ça reste natif
@@ -365,6 +371,7 @@ QUÉ HACE
 
 FUNCIONES PRINCIPALES
 • Barra de direcciones integrada con Atrás / Adelante / Recargar
+• Zoom por sitio: botones +/− en el panel; el nivel se guarda por dominio
 • Reintento automático ante fallos transitorios, después una tarjeta para abrir en pestaña
 • Lista negra / blanca por dominio (subdominios + comodines)
 • Filtrado inteligente de enlaces: anclas internas, descargas, páginas de login, contenido mixto, localhost — todo eso se queda nativo
@@ -413,6 +420,7 @@ WAS ES TUT
 
 KERNFUNKTIONEN
 • Eingebaute Adresszeile mit Zurück / Vor / Neu laden
+• Pro-Domain-Zoom: +/−-Schaltflächen im Seitenbereich, der Pegel wird je Domain gespeichert
 • Automatischer einmaliger Wiederholversuch bei Lade-Fehlschlägen, danach eine "in neuem Tab öffnen"-Karte
 • Black-/Whitelist pro Domain (Unter-Domains + Wildcards)
 • Schlaue Link-Filterung: Seitenanker, Downloads, Login-Seiten, gemischte Inhalte, localhost — bleibt alles nativ
@@ -461,6 +469,7 @@ O QUE ELE FAZ
 
 PRINCIPAIS RECURSOS
 • Barra de endereços embutida com Voltar / Avançar / Recarregar
+• Zoom por site: botões +/− no painel, o nível é lembrado para cada domínio
 • Tentativa automática única em falhas transitórias, depois cartão para abrir em nova aba
 • Lista negra / branca por domínio (subdomínios + curingas)
 • Filtragem inteligente de links: âncoras, downloads, páginas de login, conteúdo misto, localhost — tudo isso fica nativo

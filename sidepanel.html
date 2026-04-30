@@ -101,23 +101,6 @@
         opacity: 0.5;
         cursor: not-allowed;
       }
-      /* Quick "disable on this site" action — visually distinct from the
-         neutral toolbar buttons because it mutates user preferences and
-         closes the panel. Not destructive enough to warrant a confirm
-         dialog (the action is one click to undo from the options page),
-         but we tint hover red as a small "are you sure?" cue. */
-      .bar button.danger:hover:not(:disabled) {
-        background: #fee2e2;
-        border-color: #fca5a5;
-        color: #b91c1c;
-      }
-      @media (prefers-color-scheme: dark) {
-        .bar button.danger:hover:not(:disabled) {
-          background: #450a0a;
-          border-color: #b91c1c;
-          color: #fca5a5;
-        }
-      }
       .bar button.nav {
         display: none;
         align-items: center;
@@ -175,7 +158,6 @@
       .bar.editing #forward.show,
       .bar.editing #refresh,
       .bar.editing #settings,
-      .bar.editing #block,
       .bar.editing #zoom-out,
       .bar.editing #zoom-in,
       .bar.editing #zoom-level,
@@ -544,27 +526,6 @@
         placeholder="URL"
         spellcheck="false"
       />
-      <button
-        id="block"
-        class="danger icon"
-        type="button"
-        disabled
-        data-i18n-attr="title=btn_block_site_title,aria-label=btn_block_site_title"
-        title="Disable Side Panel for this site & close"
-        aria-label="Disable Side Panel for this site & close"
-      >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.2"
-          stroke-linecap="round"
-        >
-          <circle cx="12" cy="12" r="9" />
-          <line x1="5.6" y1="5.6" x2="18.4" y2="18.4" />
-        </svg>
-      </button>
       <button
         id="zoom-out"
         type="button"

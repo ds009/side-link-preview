@@ -15,7 +15,6 @@ const scrollTopBtn = document.getElementById('scroll-top');
 const backBtn = document.getElementById('back');
 const forwardBtn = document.getElementById('forward');
 const refreshBtn = document.getElementById('refresh');
-const blockBtn = document.getElementById('block');
 const loader = document.getElementById('loader');
 const zoomInBtn = document.getElementById('zoom-in');
 const zoomOutBtn = document.getElementById('zoom-out');
@@ -72,7 +71,6 @@ const updateAddrTitle = () => {
 
 const updateRefreshButton = () => {
   if (refreshBtn) refreshBtn.disabled = !currentUrl;
-  if (blockBtn) blockBtn.disabled = !currentUrl;
 };
 
 const clearBlockTimer = () => {
@@ -358,72 +356,6 @@ refreshBtn?.addEventListener('click', () => {
   retryAttempts = 0;
   load(currentUrl, { fromHistory: true, isRetry: true });
 });
-
-// "Disable Side Panel for this site" — adds the current host to the blacklist
-// (or removes it from the whitelist) and closes the panel. The user can
-// always undo this from the options page. We force a reload of the parent
-// tab so any pending hover timers in content.js are cancelled and the link
-// handlers re-bind under the new settings — otherwise the user would still
-// see panel previews on links they click in the few seconds before the next
-// natural reload.
-const blockCurrentSite = async () => {
-  if (!currentUrl) return;
-  let host;
-  try {
-    host = new URL(currentUrl).hostname.toLowerCase();
-  } catch (_) {
-    return;
-  }
-  if (!host) return;
-
-  try {
-    const data = await chrome.storage.sync.get('slpSettings');
-    const cur = data.slpSettings || {};
-    const mode = cur.mode === 'whitelist' ? 'whitelist' : 'blacklist';
-    let list = Array.isArray(cur.list) ? cur.list.map((p) => String(p)) : [];
-
-    if (mode === 'whitelist') {
-      list = list.filter((p) => p.toLowerCase() !== host);
-    } else if (!list.some((p) => p.toLowerCase() === host)) {
-      list.push(host);
-    }
-
-    await chrome.storage.sync.set({
-      slpSettings: { ...cur, mode, list },
-    });
-  } catch (err) {
-    console.warn('[SideLinkPreview] block-site failed:', err);
-    return;
-  }
-
-  const id = await resolveTabId();
-  if (id) {
-    try {
-      await chrome.tabs.reload(id);
-    } catch (err) {
-      console.warn('[SideLinkPreview] tabs.reload failed:', err);
-    }
-  }
-
-  // Close the panel after the reload kicks off — window.close() destroys
-  // this script's execution context, so anything that needed to run after
-  // the reload must come before this call.
-  try {
-    if (
-      id &&
-      chrome.sidePanel &&
-      typeof chrome.sidePanel.close === 'function'
-    ) {
-      chrome.sidePanel.close({ tabId: id });
-      return;
-    }
-  } catch (_) {}
-  try {
-    window.close();
-  } catch (_) {}
-};
-
-blockBtn?.addEventListener('click', blockCurrentSite);
 
 // Used by the "Open in new tab" button inside the blocked-page tip.
 const openInNewTab = () => {
