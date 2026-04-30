@@ -32,7 +32,7 @@ Click a link → it opens in Chrome's Side Panel side-by-side. Split-view readin
 ## 3. Detailed description
 
 ```
-Side Link Preview turns Chrome's Side Panel into a split-view reading surface. Click any link that would normally open in a new tab and it loads on the right, side-by-side with the page you came from. No new tab, no context switch, no extra browser. Independent project, not affiliated with The Browser Company or Microsoft.
+Side Link Preview turns Chrome's Side Panel into a split-view reading surface. Click any link that would normally open in a new tab and it loads on the right, side-by-side with the page you came from. No new tab, no context switch, no extra browser. Independent open-source project; not affiliated with any browser vendor.
 
 WHAT IT DOES
 • Click any target="_blank" link → it opens in Chrome's Side Panel.
@@ -48,7 +48,7 @@ KEY FEATURES
 • Keyboard shortcut Alt+Shift+P to preview the current tab in the Side Panel
 • Automatic light / dark theme — follows your system
 • Works on sites that normally block iframes — via a tightly-scoped Side-Panel-only response-header rule (see Privacy below)
-• Sign-in, SSO and payment hosts (Google / Apple / Microsoft / AWS / Okta / Auth0 / Stripe / PayPal / GitHub login / Bitwarden / WhatsApp Web / Telegram Web / …) are excluded from interception by default
+• Sign-in, SSO, payment and end-to-end-encrypted messaging hosts are excluded from interception by default for security (the full host list lives in the open-source manifest)
 • Six built-in UI languages: English, 中文, Français, Español, Deutsch, Português
 
 PRIVACY
@@ -150,9 +150,9 @@ sites THEY visit — there is no way to know that set in advance.
 
 To minimize risk, the manifest also declares an extensive
 `exclude_matches` list that prevents content-script injection on
-sign-in, SSO, and payment hosts (Google / Apple / Microsoft / AWS
-accounts, Okta, Auth0, Duo, OneLogin, Stripe Checkout, PayPal,
-GitHub login, Bitwarden, WhatsApp Web, Telegram Web, etc.).
+sign-in, SSO, payment and end-to-end-encrypted messaging hosts —
+the precise list is published in the open-source manifest under
+`content_scripts[].exclude_matches`.
 
 No page content is read, collected, or transmitted by the extension.
 ```
@@ -252,7 +252,7 @@ section under *Store listing → Localizations*.
 
 **Description:**
 ```
-Side Link Preview 让原生 Chrome 拥有真正的分屏阅读体验。所有原本会在新标签页中打开的链接，都会在 Chrome 的侧边栏中并排打开：你继续在左侧阅读原文，右侧浏览新链接，不再被新标签页淹没。本扩展为独立项目，与 The Browser Company（Arc）和 Microsoft（Edge）无任何关联。
+Side Link Preview 让原生 Chrome 拥有真正的分屏阅读体验。所有原本会在新标签页中打开的链接，都会在 Chrome 的侧边栏中并排打开：你继续在左侧阅读原文，右侧浏览新链接，不再被新标签页淹没。本扩展为独立开源项目，与任何浏览器厂商无附属关系。
 
 它做了什么
 • 点击任意 target="_blank" 链接 → 在右侧 Side Panel 中打开
@@ -268,7 +268,7 @@ Side Link Preview 让原生 Chrome 拥有真正的分屏阅读体验。所有原
 • 快捷键 Alt+Shift+P 直接预览当前标签
 • 自动跟随系统浅色 / 深色主题
 • 对正常会拒绝 iframe 的网站也能加载 —— 只在扩展自己的 Side Panel 请求上去除头部
-• 登录、SSO、支付域名（Google / Apple / Microsoft / AWS / Okta / Auth0 / Stripe / PayPal / GitHub 登录 / Bitwarden / WhatsApp Web / Telegram Web / 等等）默认不注入
+• 默认不在登录、SSO、支付以及端到端加密通信类域名上注入（完整名单见开源 manifest）
 • 内置六种语言：English、中文、Français、Español、Deutsch、Português
 
 隐私
@@ -308,7 +308,7 @@ Cliquez sur un lien → il s'ouvre côte-à-côte dans le panneau latéral de Ch
 
 **Description:**
 ```
-Side Link Preview transforme le panneau latéral de Chrome en surface de lecture côte-à-côte. Cliquez sur n'importe quel lien qui s'ouvrirait normalement dans un nouvel onglet et il s'affiche à droite, à côté de la page que vous lisiez. Pas de nouvel onglet, pas de rupture de contexte, pas de nouveau navigateur. Projet indépendant, sans affiliation avec The Browser Company ni Microsoft.
+Side Link Preview transforme le panneau latéral de Chrome en surface de lecture côte-à-côte. Cliquez sur n'importe quel lien qui s'ouvrirait normalement dans un nouvel onglet et il s'affiche à droite, à côté de la page que vous lisiez. Pas de nouvel onglet, pas de rupture de contexte, pas de nouveau navigateur. Projet indépendant et open source, sans affiliation avec aucun éditeur de navigateur.
 
 CE QUE FAIT L'EXTENSION
 • Clic sur un lien target="_blank" → ouverture dans le panneau latéral
@@ -323,7 +323,7 @@ FONCTIONNALITÉS CLÉS
 • Menu contextuel « Ouvrir dans le panneau latéral » et raccourci clavier Alt+Shift+P
 • Thème clair / sombre automatique
 • Fonctionne sur les sites qui bloquent normalement les iframes — via une règle d'en-tête limitée au panneau
-• Connexions, SSO et paiements (Google / Apple / Microsoft / AWS / Okta / Auth0 / Stripe / PayPal / GitHub login / Bitwarden / WhatsApp Web / Telegram Web…) exclus par défaut
+• Hôtes de connexion, SSO, paiement et messagerie chiffrée de bout en bout exclus par défaut pour des raisons de sécurité (liste complète dans le manifeste open source)
 • Six langues d'interface intégrées
 
 CONFIDENTIALITÉ
@@ -356,7 +356,7 @@ Pulsa un enlace → se abre en el panel lateral de Chrome, lado a lado. Vista di
 
 **Description:**
 ```
-Side Link Preview convierte el panel lateral de Chrome en una superficie de lectura lado-a-lado. Pulsa cualquier enlace que normalmente se abriría en una pestaña nueva y aparecerá a la derecha, junto a la página que estabas leyendo. Sin pestaña nueva, sin cambio de contexto, sin otro navegador. Proyecto independiente, sin afiliación con The Browser Company ni Microsoft.
+Side Link Preview convierte el panel lateral de Chrome en una superficie de lectura lado-a-lado. Pulsa cualquier enlace que normalmente se abriría en una pestaña nueva y aparecerá a la derecha, junto a la página que estabas leyendo. Sin pestaña nueva, sin cambio de contexto, sin otro navegador. Proyecto independiente de código abierto, sin afiliación con ningún proveedor de navegadores.
 
 QUÉ HACE
 • Pulsa cualquier enlace target="_blank" → se abre en el panel lateral
@@ -371,7 +371,7 @@ FUNCIONES PRINCIPALES
 • Menú contextual "Abrir en panel lateral" y atajo Alt+Shift+P
 • Tema claro / oscuro automático
 • Funciona en sitios que bloquean iframes — mediante una regla de cabeceras limitada al panel
-• Inicios de sesión, SSO y pagos (Google / Apple / Microsoft / AWS / Okta / Auth0 / Stripe / PayPal / GitHub login / Bitwarden / WhatsApp Web / Telegram Web…) excluidos por defecto
+• Hosts de inicio de sesión, SSO, pagos y mensajería cifrada de extremo a extremo excluidos por defecto por seguridad (lista completa en el manifest de código abierto)
 • Seis idiomas de interfaz integrados
 
 PRIVACIDAD
@@ -404,7 +404,7 @@ Klick einen Link → er öffnet sich im Chrome-Seitenbereich, nebeneinander. Get
 
 **Description:**
 ```
-Side Link Preview macht den Chrome-Seitenbereich zur Lese-Oberfläche im Nebeneinander-Modus. Klicke auf einen Link, der normalerweise in einem neuen Tab öffnen würde — er erscheint rechts, neben der Seite, die du gerade liest. Kein neuer Tab, kein Kontextwechsel, kein zweiter Browser. Unabhängiges Projekt, nicht verbunden mit The Browser Company oder Microsoft.
+Side Link Preview macht den Chrome-Seitenbereich zur Lese-Oberfläche im Nebeneinander-Modus. Klicke auf einen Link, der normalerweise in einem neuen Tab öffnen würde — er erscheint rechts, neben der Seite, die du gerade liest. Kein neuer Tab, kein Kontextwechsel, kein zweiter Browser. Unabhängiges Open-Source-Projekt; nicht mit einem Browseranbieter verbunden.
 
 WAS ES TUT
 • Klick auf einen target="_blank"-Link → öffnet sich im Seitenbereich
@@ -419,7 +419,7 @@ KERNFUNKTIONEN
 • Kontextmenü „Im Seitenbereich öffnen" und Tastenkürzel Alt+Shift+P
 • Automatisches helles / dunkles Design
 • Funktioniert auch bei Seiten, die iframes normalerweise blockieren — über eine eng eingegrenzte Header-Regel
-• Login-, SSO- und Zahlungsdomains (Google / Apple / Microsoft / AWS / Okta / Auth0 / Stripe / PayPal / GitHub-Login / Bitwarden / WhatsApp Web / Telegram Web …) standardmäßig ausgeschlossen
+• Login-, SSO-, Zahlungs- und Ende-zu-Ende-verschlüsselte-Messaging-Hosts werden aus Sicherheitsgründen standardmäßig ausgeschlossen (vollständige Liste im Open-Source-Manifest)
 • Sechs eingebaute UI-Sprachen
 
 DATENSCHUTZ
@@ -452,7 +452,7 @@ Clique em um link → abre lado-a-lado no painel lateral do Chrome. Visão divid
 
 **Description:**
 ```
-Side Link Preview transforma o painel lateral do Chrome em uma superfície de leitura lado-a-lado. Clique em qualquer link que normalmente abriria em uma aba nova e ele aparece à direita, ao lado da página que você estava lendo. Sem aba nova, sem troca de contexto, sem outro navegador. Projeto independente, sem qualquer afiliação com The Browser Company ou Microsoft.
+Side Link Preview transforma o painel lateral do Chrome em uma superfície de leitura lado-a-lado. Clique em qualquer link que normalmente abriria em uma aba nova e ele aparece à direita, ao lado da página que você estava lendo. Sem aba nova, sem troca de contexto, sem outro navegador. Projeto independente e de código aberto, sem afiliação com qualquer fornecedor de navegador.
 
 O QUE ELE FAZ
 • Clique em qualquer link target="_blank" → abre no painel lateral
@@ -467,7 +467,7 @@ PRINCIPAIS RECURSOS
 • Menu de contexto "Abrir no painel lateral" e atalho Alt+Shift+P
 • Tema claro / escuro automático
 • Funciona até em sites que normalmente bloqueiam iframes — via regra de cabeçalho restrita ao painel
-• Logins, SSO e pagamentos (Google / Apple / Microsoft / AWS / Okta / Auth0 / Stripe / PayPal / GitHub login / Bitwarden / WhatsApp Web / Telegram Web…) excluídos por padrão
+• Hosts de login, SSO, pagamentos e mensagens criptografadas de ponta a ponta excluídos por padrão por segurança (lista completa no manifest de código aberto)
 • Seis idiomas embutidos
 
 PRIVACIDADE

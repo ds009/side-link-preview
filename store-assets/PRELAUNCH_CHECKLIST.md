@@ -167,6 +167,6 @@ Once the dashboard is filled in and the zip is uploaded:
 | "Vague single purpose" | Single purpose is explicit: *Open links in Chrome's Side Panel for side-by-side reading.* |
 | "Remote code execution" | None. All JS is bundled in the zip; no `eval`, no remote `<script>`. |
 | "Privacy policy unreachable" | `PRIVACY.md` is in the repo, plus a styled `docs/privacy.html` for direct linking from the dashboard. |
-| "Sensitive data unprotected" | `exclude_matches` prevents content-script injection on Google/Apple/Microsoft auth, Stripe, PayPal, Bitwarden, etc. (see `manifest.json`). |
+| "Sensitive data unprotected" | `exclude_matches` prevents content-script injection on common sign-in/SSO/payment/E2EE-messaging hosts (full list in `manifest.json`). |
 | "Modifies headers without disclosure" | DNR rule scoped to `initiatorDomains: [chrome.runtime.id]` + `resourceTypes: ["sub_frame"]`; disclosed in `PRIVACY.md` § *Why we strip iframe security headers*. |
 | "Excessive screenshots / misleading marketing" | All 5 screenshots are generated from the production codebase (`npm run screenshots`), no mockups, no fake UI. |

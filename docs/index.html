@@ -648,20 +648,21 @@
         <details>
           <summary>Are passwords and payments safe?</summary>
           <p>
-            Yes. The extension never injects on known sign-in, SSO or
-            payment hosts (Google / Apple / Microsoft / AWS / Okta /
-            Auth0 / Stripe / PayPal / GitHub login / Bitwarden / WhatsApp
-            Web / Telegram Web …). And the iframe in the panel is
-            sandboxed; sensitive flows always go to a real tab.
+            Yes. The extension never injects on known sign-in, SSO,
+            payment or end-to-end-encrypted messaging hosts. The exact
+            host list is auditable in <code>manifest.json</code> under
+            <code>content_scripts[].exclude_matches</code>. And the
+            iframe in the panel is sandboxed; sensitive flows always go
+            to a real tab.
           </p>
         </details>
 
         <details>
-          <summary>Is it affiliated with Arc or Edge?</summary>
+          <summary>Is it affiliated with any browser vendor?</summary>
           <p>
-            No. "Arc" and "Edge" are referenced descriptively to explain the
-            split-view interaction model. Side Link Preview is not affiliated
-            with The Browser Company or Microsoft.
+            No. Side Link Preview is an independent, open-source project
+            built on top of Chrome's Side Panel API. It has no affiliation
+            with any browser vendor.
           </p>
         </details>
       </section>

@@ -15,7 +15,7 @@
 
 Click any link → it opens in Chrome's Side Panel on the right, side-by-side with the page you came from. A split-view reading workflow on stock Chrome, no new browser, no new tab.
 
-> Side Link Preview is independent and is not affiliated with, endorsed by, or sponsored by The Browser Company of New York or Microsoft. References to "Arc" and "Edge" are descriptive only.
+> Side Link Preview is an independent open-source project; it is not affiliated with, endorsed by, or sponsored by any browser vendor.
 
 > If this extension saves you tab-juggling time, consider [sponsoring on GitHub](https://github.com/sponsors/ds009). It keeps the project maintained and ad-free.
 
@@ -162,7 +162,7 @@ When a page truly refuses to load, the panel auto-retries once and, if still fai
 <details>
 <summary><strong>Does it intercept my password / credit card?</strong></summary>
 
-No. The extension never injects on known sign-in, SSO or payment hosts (Google / Apple / Microsoft / AWS accounts, Okta, Auth0, Duo, OneLogin, Stripe Checkout, PayPal, GitHub login, Bitwarden Web, WhatsApp Web, Telegram Web…). See `manifest.json` → `exclude_matches`. Nothing you type is read or logged on any site by the extension.
+No. The extension never injects on known sign-in, SSO, payment or end-to-end-encrypted messaging hosts. The exact host list is auditable in `manifest.json` → `content_scripts[].exclude_matches`. Nothing you type is read or logged on any site by the extension.
 
 </details>
 

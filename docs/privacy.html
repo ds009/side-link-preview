@@ -286,10 +286,10 @@
               clicks on any website to forward them to the Side Panel — the
               core feature of the Extension. To reduce risk on sensitive
               flows, the Extension explicitly excludes itself from
-              injecting on common sign-in, SSO and payment hosts
-              (Google/Apple/Microsoft/AWS accounts, Okta, Auth0, Duo,
-              OneLogin, Stripe Checkout, PayPal, GitHub login, Bitwarden,
-              WhatsApp Web, Telegram Web).
+              injecting on common sign-in, SSO, payment and
+              end-to-end-encrypted messaging hosts. The exact host list
+              is auditable in <code>manifest.json</code> under
+              <code>content_scripts[].exclude_matches</code>.
             </td>
           </tr>
         </tbody>
