@@ -206,6 +206,11 @@
             <td>Persist preferences and sync across your devices</td>
           </tr>
           <tr>
+            <td><code>chrome.storage.local</code></td>
+            <td>Per-site Side Panel zoom level (host → factor map)</td>
+            <td>Restore your preferred zoom for each domain on revisit</td>
+          </tr>
+          <tr>
             <td><code>chrome.storage.session</code></td>
             <td>The "next URL to open in the Side Panel" for each tab</td>
             <td>Relay the URL between the content script and the Side Panel</td>
@@ -214,7 +219,9 @@
       </table>
       <p>
         <code>chrome.storage.session</code> is cleared automatically when
-        the browser shuts down.
+        the browser shuts down. <code>chrome.storage.local</code> persists
+        across browser restarts but is device-local and is <strong>not</strong>
+        synced to your Google account.
       </p>
 
       <h2>Permissions and why we request them</h2>

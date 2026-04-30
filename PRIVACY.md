@@ -38,11 +38,13 @@ itself syncs it for you:
 
 | Storage                    | Content                                                                        | Purpose                                                       |
 | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------- |
-| `chrome.storage.sync`      | User settings (blacklist/whitelist mode, domain list, trigger preferences, UI language, etc.) | Persist preferences and sync them across your devices         |
+| `chrome.storage.sync`      | User settings (blacklist/whitelist mode, domain list, link scope, UI language) | Persist preferences and sync them across your devices         |
+| `chrome.storage.local`     | Per-site Side Panel zoom level (host → factor map)                             | Restore your preferred zoom for each domain on revisit        |
 | `chrome.storage.session`   | The "next URL to open in the Side Panel" for each tab                          | Relay the URL between the content script and the Side Panel  |
 
 `chrome.storage.session` is cleared automatically when the browser shuts
-down.
+down. `chrome.storage.local` persists across browser restarts but is
+device-local and is **not** synced to your Google account.
 
 ## Permissions and why we request them
 
