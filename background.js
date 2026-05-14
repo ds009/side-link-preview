@@ -1,3 +1,6 @@
+/* global importScripts, normalizeSlpSettings, isSensitiveAuthPreviewUrl */
+importScripts('settings-shared.js');
+
 const DNR_RULE_ID = 1;
 
 // Strip X-Frame-Options / CSP headers only on iframe requests whose initiator
@@ -121,10 +124,36 @@ ensureContextMenu();
 
 const isHttpUrl = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
 
+// Defense-in-depth mirror of content.js's AUTH_HOST_RE. Even if a stale or
+// pre-upgrade content script forwards a sign-in / SSO / payment / E2E-
+// messaging URL, the Side Panel must refuse to load it. Keep in sync with
+// `content_scripts[].exclude_matches` in manifest.json.
+const AUTH_HOST_RE =
+  /^(?:accounts\.google\.com|accounts\.youtube\.com|login\.microsoftonline\.com|login\.live\.com|appleid\.apple\.com|idmsa\.apple\.com|signin\.aws\.amazon\.com|(?:[\w-]+\.)*okta\.com|(?:[\w-]+\.)*duosecurity\.com|(?:[\w-]+\.)*onelogin\.com|(?:[\w-]+\.)*auth0\.com|checkout\.stripe\.com|(?:[\w-]+\.)*paypal\.com|web\.whatsapp\.com|web\.telegram\.org|accounts\.firefox\.com|login\.yahoo\.com|(?:[\w-]+\.)*bitwarden\.com)$/i;
+
+const isAuthUrl = (u) => {
+  try {
+    return AUTH_HOST_RE.test(new URL(u).hostname);
+  } catch (_) {
+    return false;
+  }
+};
+
 // Push a concrete URL into the current tab's Side Panel. Mirrors the open
 // logic used in the onMessage branch below.
 const openUrlInSidePanel = async (url, tab) => {
   if (!isHttpUrl(url) || !tab?.id || !tab?.windowId) return;
+  // Auth / SSO / payment / E2E-messaging destinations are unsafe to embed
+  // even when the user explicitly chose "Open link in Side Panel" or
+  // pressed the keyboard shortcut. Fall back to a real new tab.
+  if (isAuthUrl(url) || isSensitiveAuthPreviewUrl(url)) {
+    try {
+      await chrome.tabs.create({ url, active: true });
+    } catch (err) {
+      console.warn('[SideLinkPreview] auth fallback:', err);
+    }
+    return;
+  }
   const tabId = tab.id;
   const windowId = tab.windowId;
   try {
@@ -221,6 +250,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: false, reason: 'unsupported scheme' });
     return;
   }
+  // Auth / SSO / payment / E2E-messaging hosts must never enter the Side
+  // Panel even if a stale content script forwards them here. Fall back to
+  // opening in a real new tab so the user still gets the page.
+  if (isAuthUrl(msg.url) || isSensitiveAuthPreviewUrl(msg.url)) {
+    chrome.tabs
+      .create({ url: msg.url, active: true })
+      .catch((err) => console.warn('[SideLinkPreview] auth fallback:', err));
+    sendResponse({ ok: false, reason: 'auth host' });
+    return;
+  }
 
   const tabId = sender.tab?.id;
   const windowId = sender.tab?.windowId;
@@ -288,9 +327,10 @@ const matchDomainBg = (host, pattern) => {
 
 const isHostDisabledBySettings = (host, settings) => {
   if (!host) return false;
-  const list = Array.isArray(settings?.list) ? settings.list : [];
+  const n = normalizeSlpSettings(settings);
+  const list = n.mode === 'whitelist' ? n.whitelist : n.blacklist;
   const listed = list.some((p) => matchDomainBg(host, p));
-  if (settings?.mode === 'whitelist') return !listed;
+  if (n.mode === 'whitelist') return !listed;
   return listed;
 };
 
@@ -298,19 +338,24 @@ const isHostDisabledBySettings = (host, settings) => {
 // service worker can be torn down at any time, in which case the cache
 // rebuilds on first use — that's fine.
 let cachedSettings = null;
+let settingsCacheReady = false;
 const getSettings = async () => {
-  if (cachedSettings) return cachedSettings;
+  if (settingsCacheReady) return cachedSettings;
   try {
     const data = await chrome.storage.sync.get('slpSettings');
     cachedSettings = data.slpSettings || {};
+    settingsCacheReady = true;
   } catch (_) {
-    cachedSettings = {};
+    // Don't cache failed reads as `{}` or we'd never retry until SW restart.
+    settingsCacheReady = false;
+    return {};
   }
   return cachedSettings;
 };
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'sync' && changes.slpSettings) {
     cachedSettings = changes.slpSettings.newValue || {};
+    settingsCacheReady = true;
   }
 });
 
@@ -334,6 +379,17 @@ const refreshSidePanelForTab = async (tabId, url) => {
   } catch (err) {
     console.warn('[SideLinkPreview] toggle panel:', err);
   }
+  // Chrome has no sidePanel.close(). If this tab's Side Panel is open and the
+  // page should no longer use it (system URL / scope rules), ask that panel
+  // instance to window.close() — it only reacts when ?tabId matches.
+  if (disabled) {
+    chrome.runtime
+      .sendMessage({
+        type: 'SLP_REQUEST_SIDE_PANEL_CLOSE',
+        tabId,
+      })
+      .catch(() => {});
+  }
 };
 
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
@@ -356,10 +412,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // disappears immediately, without waiting for a navigation.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync' || !changes.slpSettings) return;
-  const before = changes.slpSettings.oldValue || {};
-  const after = changes.slpSettings.newValue || {};
+  const before = normalizeSlpSettings(changes.slpSettings.oldValue || {});
+  const after = normalizeSlpSettings(changes.slpSettings.newValue || {});
   const listChanged =
-    JSON.stringify(before.list || []) !== JSON.stringify(after.list || []);
+    JSON.stringify(before.blacklist) !== JSON.stringify(after.blacklist) ||
+    JSON.stringify(before.whitelist) !== JSON.stringify(after.whitelist);
   const modeChanged = before.mode !== after.mode;
   if (!listChanged && !modeChanged) return;
 

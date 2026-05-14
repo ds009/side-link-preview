@@ -10,7 +10,7 @@ repo and just need a quick re-verification before you ship.
 > 2. Make the GitHub repo **Public** and turn on **Pages → main /docs**.
 > 3. `npm run zip` and load-unpacked once for a smoke test.
 > 4. Fill in the dashboard form (privacy URL, justifications, data answers — all already drafted in `STORE_LISTING.md`).
-> 5. Tag `v0.9.0` to ship the GitHub Release.
+> 5. Tag `v1.0.0` to ship the GitHub Release.
 >
 > Everything below is the long form.
 
@@ -30,7 +30,7 @@ repo and just need a quick re-verification before you ship.
 
 ## 1. Code & manifest
 
-- [x] `manifest.json` `version` = `0.9.0` — matches the tag you'll publish.
+- [x] `manifest.json` `version` = `1.0.0` — matches the tag you'll publish.
 - [x] `minimum_chrome_version` set (currently `"119"`).
 - [x] `description` ≤ 132 chars and trademark-clean.
 - [x] No remote-hosted code (no `<script src="https://…">`,
@@ -52,7 +52,7 @@ repo and just need a quick re-verification before you ship.
 ## 2. Build artifact
 
 - [x] `npm run zip` is rewritten in `scripts/zip.mjs`; produces a clean
-      `dist/side-link-preview-0.9.0.zip` (~70 KB, well under 10 MB).
+      `dist/side-link-preview-1.0.0.zip` (~70 KB, well under 10 MB).
 - [x] Verified: zip excludes `node_modules/`, `scripts/`, `store-assets/`,
       `docs/`, `icons/icon-square.png`, `*.DS_Store`.
 - [ ] **[manual]** Run `npm run zip`, unzip into a scratch folder and
@@ -73,7 +73,7 @@ repo and just need a quick re-verification before you ship.
       - no copyrighted imagery you don't own (Wikipedia + MDN are
         CC-licensed and fair-use as a UI demo)
 - [ ] **[manual, optional]** 30-sec YouTube demo (huge conversion lift —
-      you can skip for v0.9.0 and add later).
+      you can skip for v1.0.0 and add later).
 
 ## 4. Dashboard fields (Chrome Web Store)
 
@@ -146,7 +146,7 @@ git grep -l REPLACE_WITH_EXTENSION_ID | xargs sed -i '' 's/REPLACE_WITH_EXTENSIO
 
 Once the dashboard is filled in and the zip is uploaded:
 
-- [ ] **[manual]** `git tag v0.9.0 && git push origin v0.9.0`.
+- [ ] **[manual]** `git tag v1.0.0 && git push origin v1.0.0`.
       The `release.yml` workflow auto-builds the zip and creates a GitHub
       Release. Reviewers can read the source on the same tag.
 

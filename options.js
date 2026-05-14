@@ -1,6 +1,7 @@
 const DEFAULTS = {
   mode: 'blacklist',
-  list: [],
+  blacklist: [],
+  whitelist: [],
   linkScope: 'blank-only',
   locale: 'en',
 };
@@ -12,6 +13,7 @@ const els = {
   mode: $$('input[name="mode"]'),
   includeNonBlank: $('#includeNonBlank'),
   list: $('#list'),
+  whitelistReco: $('#whitelistReco'),
   locale: $('#locale'),
   status: $('#status'),
   reset: $('#reset'),
@@ -39,19 +41,57 @@ const normalizeLocale = (loc) => {
   return allowed[loc] ? loc : DEFAULTS.locale;
 };
 
-const render = (s) => {
-  setRadio(els.mode, s.mode);
-  els.includeNonBlank.checked = s.linkScope === 'all';
-  els.list.value = s.list.join('\n');
-  els.locale.value = normalizeLocale(s.locale);
+const syncWhitelistRecommendationVisibility = () => {
+  const el = els.whitelistReco;
+  if (!el) return;
+  el.hidden = (getRadio(els.mode) || DEFAULTS.mode) !== 'blacklist';
 };
 
-const readForm = () => ({
-  mode: getRadio(els.mode) || DEFAULTS.mode,
-  linkScope: els.includeNonBlank.checked ? 'all' : 'blank-only',
-  list: parseList(els.list.value),
-  locale: normalizeLocale(els.locale.value),
-});
+let formState = normalizeSlpSettings(DEFAULTS);
+let lastMode = DEFAULTS.mode;
+
+/** Optimistic-lock revision for sync merges (added on each successful save). */
+const readRev = (raw) =>
+  raw &&
+  typeof raw._rev === 'number' &&
+  Number.isFinite(raw._rev)
+    ? raw._rev
+    : 0;
+
+let lastAckRev = 0;
+
+const flushTextareaIntoFormState = () => {
+  const m = getRadio(els.mode) || DEFAULTS.mode;
+  const parsed = parseList(els.list.value);
+  if (m === 'whitelist') formState.whitelist = parsed;
+  else formState.blacklist = parsed;
+  formState.mode = m;
+};
+
+const render = (raw) => {
+  formState = normalizeSlpSettings({ ...DEFAULTS, ...(raw || {}) });
+  lastAckRev = readRev(raw);
+  lastMode = formState.mode;
+  setRadio(els.mode, formState.mode);
+  els.includeNonBlank.checked = formState.linkScope === 'all';
+  els.list.value =
+    formState.mode === 'whitelist'
+      ? formState.whitelist.join('\n')
+      : formState.blacklist.join('\n');
+  els.locale.value = normalizeLocale(formState.locale);
+  syncWhitelistRecommendationVisibility();
+};
+
+const readForm = () => {
+  flushTextareaIntoFormState();
+  return {
+    mode: getRadio(els.mode) || DEFAULTS.mode,
+    blacklist: [...formState.blacklist],
+    whitelist: [...formState.whitelist],
+    linkScope: els.includeNonBlank.checked ? 'all' : 'blank-only',
+    locale: normalizeLocale(els.locale.value),
+  };
+};
 
 let statusTimer = null;
 const flashSaved = () => {
@@ -74,7 +114,32 @@ const byteLength = (obj) =>
   new TextEncoder().encode(JSON.stringify(obj)).length;
 
 const save = async () => {
+  let remoteSnap;
+  try {
+    remoteSnap = await chrome.storage.sync.get('slpSettings');
+  } catch (err) {
+    els.status.textContent = t('save_failed', 'Save failed: ') + err.message;
+    els.status.classList.remove('ok');
+    return;
+  }
+  const remote = remoteSnap?.slpSettings;
+  const remoteRev = readRev(remote);
+  if (remoteRev !== lastAckRev) {
+    render(remote || {});
+    els.status.textContent = t(
+      'settings_conflict_notice',
+      'Settings were updated elsewhere; loaded the latest.',
+    );
+    els.status.classList.remove('ok');
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => {
+      els.status.textContent = '';
+    }, 3500);
+    return;
+  }
+
   const next = readForm();
+  next._rev = Date.now();
   const size = byteLength(next);
   if (size > SYNC_ITEM_SOFT_LIMIT) {
     els.status.textContent = t(
@@ -86,6 +151,7 @@ const save = async () => {
   }
   try {
     await chrome.storage.sync.set({ slpSettings: next });
+    lastAckRev = next._rev;
     flashSaved();
   } catch (err) {
     els.status.textContent = t('save_failed', 'Save failed: ') + err.message;
@@ -102,19 +168,34 @@ const debounce = (fn, ms) => {
 };
 
 const init = async () => {
-  let s = { ...DEFAULTS };
+  let raw = {};
   try {
     const data = await chrome.storage.sync.get('slpSettings');
-    if (data.slpSettings) {
-      s = { ...DEFAULTS, ...data.slpSettings };
-    }
+    if (data.slpSettings) raw = data.slpSettings;
   } catch (_) {}
-  render(s);
+  render(raw);
 
   const debouncedSave = debounce(save, 300);
 
   for (const el of els.mode) {
-    el.addEventListener('change', save);
+    el.addEventListener('change', () => {
+      const newMode = getRadio(els.mode) || DEFAULTS.mode;
+      const parsed = parseList(els.list.value);
+      if (lastMode === 'whitelist') formState.whitelist = parsed;
+      else formState.blacklist = parsed;
+
+      lastMode = newMode;
+      formState.mode = newMode;
+      setRadio(els.mode, newMode);
+
+      els.list.value =
+        newMode === 'whitelist'
+          ? formState.whitelist.join('\n')
+          : formState.blacklist.join('\n');
+
+      syncWhitelistRecommendationVisibility();
+      save();
+    });
   }
   els.includeNonBlank.addEventListener('change', save);
   els.list.addEventListener('input', debouncedSave);
@@ -126,7 +207,7 @@ const init = async () => {
       'Reset to defaults? The domain list will be cleared.',
     );
     if (!confirm(msg)) return;
-    const next = { ...DEFAULTS };
+    const next = { ...DEFAULTS, _rev: Date.now() };
     await chrome.storage.sync.set({ slpSettings: next });
     render(next);
     flashSaved();
@@ -137,11 +218,10 @@ const init = async () => {
   // re-render the form unless the user is actively typing in the textarea.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync' || !changes.slpSettings) return;
-    const next = { ...DEFAULTS, ...(changes.slpSettings.newValue || {}) };
+    const next = changes.slpSettings.newValue || {};
     if (document.activeElement === els.list) {
-      // User is mid-edit on the textarea; re-rendering would clobber
-      // their cursor / unsaved input. Skip — debouncedSave will reconcile
-      // soon enough.
+      // Keep cursor position; the next save() will compare _rev and reload
+      // remote data if another client wrote first.
       return;
     }
     render(next);

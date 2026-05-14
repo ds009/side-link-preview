@@ -43,7 +43,7 @@ KEY FEATURES
 • Side Panel address bar with Back / Forward / Refresh — works exactly like a tiny browser inside the panel
 • Per-site zoom: in-panel +/− buttons remember your preferred zoom for each domain
 • Auto-retry once on transient embed failures, then a clear "open in a new tab" fallback card
-• Per-domain blacklist or whitelist with subdomain-aware matching and wildcard support
+• Per-domain blacklist or whitelist with **separate saved lists**, subdomain-aware matching and wildcard support
 • Smart link filtering: same-page anchors, downloads, login/OAuth pages, mixed content, localhost, and more open natively instead of in the panel
 • Right-click "Open link in Side Panel" — a one-shot bypass of every rule
 • Keyboard shortcut Alt+Shift+P to preview the current tab in the Side Panel
@@ -101,10 +101,11 @@ which is the extension's only user-facing surface.
 
 ### `storage`
 ```
-Persist the user's preferences (blacklist/whitelist, link scope, UI
-language) and relay the URL to be opened between the content script and
-the Side Panel page. All data stays on the user's device and syncs only
-through their own Chrome profile.
+Persist the user's preferences (blacklist/whitelist mode, **separate**
+blacklist and whitelist domain lists, link scope, UI language, internal
+revision for multi-tab saves) and relay the URL to be opened between the
+content script and the Side Panel page. All data stays on the user's
+device and syncs only through their own Chrome profile.
 ```
 
 ### `tabs`
@@ -228,7 +229,7 @@ Upload the resulting `.zip` under *Package → Upload new package*.
 
 After the review passes:
 
-1. Create a GitHub release `v0.9.0` linking to the CWS page.
+1. Create a GitHub release `v1.0.0` linking to the CWS page.
 2. Update `README.md` with the CWS install link at the top.
 3. Replace `REPLACE_WITH_EXTENSION_ID` in `docs/index.html` with the real ID. (Done: `jpbekmkggadbfacnnlnkjhdkgaoonapn`)
 4. Announce — see `store-assets/LAUNCH_POSTS.md` (HN / Product Hunt /
@@ -267,7 +268,7 @@ Side Link Preview 让原生 Chrome 拥有真正的分屏阅读体验。所有原
 • 侧栏自带地址栏 + 后退 / 前进 / 刷新按钮，像一个迷你浏览器
 • 按站点缩放：侧栏内置 +/− 按钮，每个域名独立记忆缩放比例
 • 加载失败自动重试一次，再失败则显示「在新标签页打开」的兜底卡片
-• 按域名黑 / 白名单，支持子域名匹配和通配符
+• 按域名黑 / 白名单，**黑白名单各自独立存储**，支持子域名匹配和通配符
 • 智能链接过滤：同页锚点、下载、登录页、混合内容、localhost 等都自动走原生行为，不进侧栏
 • 右键菜单「在侧栏中打开链接」，可临时绕过所有规则
 • 快捷键 Alt+Shift+P 直接预览当前标签
@@ -324,7 +325,7 @@ FONCTIONNALITÉS CLÉS
 • Barre d'adresse intégrée avec Précédent / Suivant / Recharger
 • Zoom par site : boutons +/− dans le panneau, niveau mémorisé pour chaque domaine
 • Re-essai automatique en cas d'échec d'intégration, puis carte « ouvrir dans un nouvel onglet »
-• Listes blanche / noire par domaine (sous-domaines + jokers)
+• Listes blanche / noire par domaine, **stockées séparément** (sous-domaines + jokers)
 • Filtrage de liens intelligent : ancres dans la page, téléchargements, pages de login, contenu mixte, localhost — tout ça reste natif
 • Menu contextuel « Ouvrir dans le panneau latéral » et raccourci clavier Alt+Shift+P
 • Thème clair / sombre automatique
@@ -373,7 +374,7 @@ FUNCIONES PRINCIPALES
 • Barra de direcciones integrada con Atrás / Adelante / Recargar
 • Zoom por sitio: botones +/− en el panel; el nivel se guarda por dominio
 • Reintento automático ante fallos transitorios, después una tarjeta para abrir en pestaña
-• Lista negra / blanca por dominio (subdominios + comodines)
+• Lista negra / blanca por dominio con **listas guardadas por separado** (subdominios + comodines)
 • Filtrado inteligente de enlaces: anclas internas, descargas, páginas de login, contenido mixto, localhost — todo eso se queda nativo
 • Menú contextual "Abrir en panel lateral" y atajo Alt+Shift+P
 • Tema claro / oscuro automático
@@ -422,7 +423,7 @@ KERNFUNKTIONEN
 • Eingebaute Adresszeile mit Zurück / Vor / Neu laden
 • Pro-Domain-Zoom: +/−-Schaltflächen im Seitenbereich, der Pegel wird je Domain gespeichert
 • Automatischer einmaliger Wiederholversuch bei Lade-Fehlschlägen, danach eine "in neuem Tab öffnen"-Karte
-• Black-/Whitelist pro Domain (Unter-Domains + Wildcards)
+• Black-/Whitelist pro Domain, **getrennt gespeichert** (Unter-Domains + Wildcards)
 • Schlaue Link-Filterung: Seitenanker, Downloads, Login-Seiten, gemischte Inhalte, localhost — bleibt alles nativ
 • Kontextmenü „Im Seitenbereich öffnen" und Tastenkürzel Alt+Shift+P
 • Automatisches helles / dunkles Design
@@ -471,7 +472,7 @@ PRINCIPAIS RECURSOS
 • Barra de endereços embutida com Voltar / Avançar / Recarregar
 • Zoom por site: botões +/− no painel, o nível é lembrado para cada domínio
 • Tentativa automática única em falhas transitórias, depois cartão para abrir em nova aba
-• Lista negra / branca por domínio (subdomínios + curingas)
+• Lista negra / branca por domínio com **armazenamento independente** (subdomínios + curingas)
 • Filtragem inteligente de links: âncoras, downloads, páginas de login, conteúdo misto, localhost — tudo isso fica nativo
 • Menu de contexto "Abrir no painel lateral" e atalho Alt+Shift+P
 • Tema claro / escuro automático

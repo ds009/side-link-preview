@@ -1,6 +1,6 @@
 # Privacy Policy · Side Link Preview
 
-_Last updated: 2026-04-28_
+_Last updated: 2026-05-14_
 
 Side Link Preview (the "Extension") respects and protects user privacy. This
 policy describes every kind of data handling the Extension performs at
@@ -38,7 +38,7 @@ itself syncs it for you:
 
 | Storage                    | Content                                                                        | Purpose                                                       |
 | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------- |
-| `chrome.storage.sync`      | User settings (blacklist/whitelist mode, domain list, link scope, UI language) | Persist preferences and sync them across your devices         |
+| `chrome.storage.sync`      | User settings: blacklist/whitelist **mode**, **separate** blacklist and whitelist domain lists, link scope, UI language, and an internal revision counter used only to detect conflicting saves between tabs/devices | Persist preferences and sync them across your devices         |
 | `chrome.storage.local`     | Per-site Side Panel zoom level (host → factor map)                             | Restore your preferred zoom for each domain on revisit        |
 | `chrome.storage.session`   | The "next URL to open in the Side Panel" for each tab                          | Relay the URL between the content script and the Side Panel  |
 

@@ -11,7 +11,10 @@
   },
   "globals": {
     "chrome": "readonly",
-    "SLP_I18N": "readonly"
+    "SLP_I18N": "readonly",
+    "normalizeSlpSettings": "readonly",
+    "activeDomainList": "readonly",
+    "isSensitiveAuthPreviewUrl": "readonly"
   },
   "rules": {
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
@@ -26,5 +29,13 @@
     "icons/",
     "node_modules/",
     "store-assets/"
+  ],
+  "overrides": [
+    {
+      "files": ["settings-shared.js"],
+      "rules": {
+        "no-unused-vars": "off"
+      }
+    }
   ]
 }

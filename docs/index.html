@@ -555,8 +555,11 @@
           <div class="icon" aria-hidden="true">⚙</div>
           <h3>Per-domain rules</h3>
           <p>
-            Blacklist or whitelist mode, wildcards supported. Subdomains
-            matched automatically.
+            Blacklist or whitelist mode with <strong>two saved lists</strong>
+            (switching mode swaps the editor). Wildcards and automatic
+            subdomain matching. When Scope disables a tab, the panel turns off
+            for that tab; keyboard shortcut and toolbar can still open it on
+            purpose.
           </p>
         </div>
         <div class="feat">
@@ -571,7 +574,8 @@
           <div class="icon" aria-hidden="true">🧭</div>
           <h3>Smart link filtering</h3>
           <p>
-            Same-page anchors, downloads, login pages, mixed content,
+            Same-page anchors, downloads, login pages, sensitive hosts,
+            path-only cases such as GitHub <code>/sessions</code>, mixed content,
             localhost — they stay native, never the panel.
           </p>
         </div>
@@ -593,8 +597,8 @@
             Panel so it stays open while you switch tabs.
           </li>
           <li>
-            Open <em>Settings</em> to switch language, scope (blacklist /
-            whitelist), domain list, and link-scope rules.
+            Open <em>Settings</em> for language, Scope (blacklist /
+            whitelist with independent lists), and link-scope rules.
           </li>
         </ol>
       </section>
@@ -654,6 +658,16 @@
             <code>content_scripts[].exclude_matches</code>. And the
             iframe in the panel is sandboxed; sensitive flows always go
             to a real tab.
+          </p>
+        </details>
+
+        <details>
+          <summary>Blacklist vs whitelist — what gets saved?</summary>
+          <p>
+            Both lists are stored separately. Changing mode only switches which
+            list you are editing; the other list is kept. Synced settings include
+            a tiny revision field so two options tabs are less likely to
+            overwrite each other.
           </p>
         </details>
 

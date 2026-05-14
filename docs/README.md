@@ -9,6 +9,10 @@ GitHub Pages. To enable it:
 4. *Branch*: **main**, *Folder*: **/docs**
 5. Save. The URL appears within ~1 minute.
 
+Keep **`privacy.html`** in sync with **`../PRIVACY.md`** (especially the
+storage table and “Last updated” date) whenever privacy-related behavior
+changes.
+
 After the Chrome Web Store listing is approved, replace
 `jpbekmkggadbfacnnlnkjhdkgaoonapn` in `index.html` with the real extension ID
 (it shows up in the Developer Dashboard once published).

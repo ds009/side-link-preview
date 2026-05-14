@@ -402,6 +402,14 @@
           supported (e.g. <code>*keyword*</code> matches any domain containing
           <code>keyword</code>).
         </p>
+        <div
+          class="callout info"
+          data-i18n-html="scope_shortcut_bypass_html"
+        >
+          Keyboard shortcut and toolbar icon can still open the Side Panel on a
+          tab even when Scope would disable link previews — that is intentional
+          so you can explicitly mirror the current page.
+        </div>
         <div class="radio-group">
           <label>
             <input type="radio" name="mode" value="blacklist" />
@@ -415,6 +423,16 @@
               Whitelist (enabled only on sites in the list)
             </span>
           </label>
+        </div>
+        <div
+          class="callout info"
+          id="whitelistReco"
+          hidden
+          data-i18n-html="scope_whitelist_recommended_html"
+        >
+          <strong>Tip:</strong> For tighter control, switch to
+          <strong>whitelist</strong> mode above — the Side Panel only runs on
+          sites you list, so it won't open where you don't need it.
         </div>
         <div style="margin-top: 14px;">
           <textarea
@@ -479,6 +497,7 @@
       </a>
     </div>
     <script src="i18n.js"></script>
+    <script src="settings-shared.js"></script>
     <script src="options.js"></script>
   </body>
 </html>

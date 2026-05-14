@@ -191,7 +191,8 @@ const shootOptionsBlacklist = async (browser, extensionId) => {
   log('#3 options page · blacklist mode');
   await seedSettings(browser, extensionId, {
     mode: 'blacklist',
-    list: ['*.youtube.com', 'twitter.com', '*.docs.google.com', 'mail.example.com'],
+    blacklist: ['*.youtube.com', 'twitter.com', '*.docs.google.com', 'mail.example.com'],
+    whitelist: [],
     linkScope: 'blank-only',
     locale: LOCALE,
   });
@@ -215,7 +216,8 @@ const shootOptionsDark = async (browser, extensionId) => {
   log('#5 options · dark mode + 中文');
   await seedSettings(browser, extensionId, {
     mode: 'blacklist',
-    list: ['*.youtube.com', 'twitter.com'],
+    blacklist: ['*.youtube.com', 'twitter.com'],
+    whitelist: [],
     linkScope: 'blank-only',
     locale: 'zh',
   });
@@ -265,7 +267,8 @@ const shootSidePanelToolbar = async (browser, extensionId) => {
   log('#2 side panel · toolbar with history');
   await seedSettings(browser, extensionId, {
     mode: 'blacklist',
-    list: [],
+    blacklist: [],
+    whitelist: [],
     linkScope: 'blank-only',
     locale: LOCALE,
   });
@@ -339,7 +342,8 @@ const shootHero = async (browser, extensionId) => {
   log('#1 hero · split view');
   await seedSettings(browser, extensionId, {
     mode: 'blacklist',
-    list: [],
+    blacklist: [],
+    whitelist: [],
     linkScope: 'blank-only',
     locale: LOCALE,
   });

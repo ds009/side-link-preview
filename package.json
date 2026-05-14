@@ -1,6 +1,6 @@
 {
   "name": "side-link-preview",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Chrome extension that opens target=\"_blank\" links in Chrome's Side Panel for split-view side-by-side reading.",
   "homepage": "https://github.com/ds009/side-link-preview",

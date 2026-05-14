@@ -25,8 +25,8 @@ Click any link → it opens in Chrome's Side Panel on the right, side-by-side wi
 - **Modifier keys still do what you expect** — `⌘`/`Ctrl`, `⌘+⇧`/`Ctrl+⇧`, `⇧`, `⌥`/`Alt` always bypass the panel and behave like the browser default.
 - **Side-Panel address bar** with **Back / Forward / Refresh** buttons that appear once you have history; auto-collapses on narrow widths.
 - **In-panel loading indicator** + **single auto-retry** on transient embed failures, then a friendly "open in a new tab" fallback card.
-- **Smart link filtering (11 rules)** — same-page anchors, bare-domain homepage links, downloads, mixed content, login/OAuth pages, localhost, etc. all open natively instead of in the panel. Full list in [`content.js`](./content.js).
-- **Per-site enable/disable** with subdomain-aware blacklist or whitelist mode, plus extensive built-in `exclude_matches` for sign-in / SSO / payment hosts.
+- **Smart link filtering** — same-page anchors, bare-domain homepage links, downloads, mixed content, login/OAuth pages, localhost, sign-in/SSO/payment destinations, path-sensitive auth URLs (e.g. GitHub `/sessions`), etc. all open natively instead of in the panel. Full logic in [`content.js`](./content.js) and [`settings-shared.js`](./settings-shared.js).
+- **Per-site enable/disable** with subdomain-aware blacklist or whitelist mode (**two stored lists** — switching mode swaps the editor without losing the other list), optional in-page tip recommending whitelist for tighter control, plus extensive built-in `exclude_matches` for sign-in / SSO / payment hosts.
 - **Right-click context menu** "Open link in Side Panel" — a one-shot bypass of every rule.
 - **Keyboard shortcut** `Alt+Shift+P` to open the current tab inside the Side Panel.
 - **Automatic light / dark theme** following your OS, plus six built-in UI languages (English, 中文, Français, Español, Deutsch, Português).
@@ -74,12 +74,18 @@ Six languages are bundled: **English** (default), **中文**, **Français**, **E
 - **Blacklist** (default): the extension is enabled on every site **except** those listed.
 - **Whitelist**: the extension is enabled **only** on listed sites.
 
+**Separate lists:** blacklist entries and whitelist entries are **stored independently**. Changing the mode updates the text area to show that mode’s list; the other list is preserved.
+
+The options page suggests **whitelist mode** when blacklist is selected — fewer sites open the panel automatically.
+
 Domain matching:
 
 - `example.com` matches `example.com`, `www.example.com`, `blog.example.com`, and any other subdomain.
 - `*` is a wildcard: `*example*` matches any hostname containing `example`.
 
-When you visit a disabled site, the Side Panel auto-closes and the extension makes itself fully inert on that page — link clicks behave exactly the way the browser would handle them natively.
+When the active tab navigates to a URL where Scope disables previews (or to `chrome://` etc.), the extension disables the Side Panel for that tab and asks an open panel instance for that tab to close. Link interception on the page becomes inert so clicks behave like the native browser.
+
+**Shortcut vs Scope:** `Alt+Shift+P` and the toolbar icon can still open the Side Panel on the **current tab** even when Scope would block automatic link previews — that is intentional so you can explicitly mirror the page you are on.
 
 ### Link scope
 
@@ -116,6 +122,8 @@ To keep the panel out of your way, the extension also **skips** Side-Panel previ
 - **Localhost / private IPs / `.local` mDNS** — almost always developer tooling.
 - **Login / SSO / OAuth paths** — `/login`, `/signin`, `/sso`, `/saml`, `/oauth`, `/auth`.
 - **Disabled destination host** — link target host is on the user's disable list.
+- **Sensitive destination hosts** — sign-in, SSO, payment and E2E-messaging hosts (the same set listed in `content_scripts[].exclude_matches`). A click from a third-party page to one of these always opens in a real new tab.
+- **Path-only sensitive URLs** — where hostname checks are not enough (e.g. `github.com/sessions/…` cookie-auth flows), links are sent to a normal tab instead of the panel (see `isSensitiveAuthPreviewUrl` in [`settings-shared.js`](./settings-shared.js)).
 - **Nested third-party iframes** — clicks inside YouTube embeds, Disqus, ads, social widgets etc. are left alone.
 
 `chrome://`, `chrome-extension://` and other internal pages are also automatically excluded — clicking the toolbar icon there is a no-op.
@@ -126,6 +134,7 @@ To keep the panel out of your way, the extension also **skips** Side-Panel previ
 - One Side Panel per Chrome window; it updates its content as you switch tabs.
 - Chrome's native Split View has no public extension API at the moment (2026-04), which is why this extension uses Side Panel + iframe instead.
 - Newly opened tabs that already existed before installing or upgrading the extension need a single refresh before clicks are intercepted there.
+- **SPA navigations** that change the URL without a full navigation may not fire Chrome’s tab URL events immediately — Scope and auto-close logic can lag until the address bar URL updates.
 
 ## Compatibility FAQ
 
@@ -169,7 +178,7 @@ No. The extension never injects on known sign-in, SSO, payment or end-to-end-enc
 <details>
 <summary><strong>Does it sync my settings between devices?</strong></summary>
 
-Yes — via `chrome.storage.sync`, Chrome's built-in profile sync. The extension itself has no server. There is a soft size limit of ~7.5 KB for the domain list (Chrome's per-item quota minus a safety margin); this is plenty for hundreds of entries.
+Yes — via `chrome.storage.sync`, Chrome's built-in profile sync. The extension itself has no server. There is a soft size limit of ~7.5 KB for the whole settings object (Chrome's per-item quota minus a safety margin); this is plenty for hundreds of domain entries across **both** lists. A small internal revision field (`_rev`) reduces the chance that two options tabs overwrite each other when saving.
 
 </details>
 
@@ -185,6 +194,7 @@ side-link-preview/
 ├── sidepanel.js       # Side Panel logic (history, retry, address bar)
 ├── options.html       # Options page
 ├── options.js         # Options page logic
+├── settings-shared.js # Normalized settings shape + legacy migration + shared URL guards
 ├── i18n.js            # Lightweight i18n runtime (shared by options + sidepanel)
 ├── locales/           # en / zh / fr / es / de / pt translation files
 └── icons/             # 16 / 32 / 48 / 128 px icons

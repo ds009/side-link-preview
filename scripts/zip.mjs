@@ -26,6 +26,7 @@ if (existsSync(out)) unlinkSync(out);
 const include = [
   'manifest.json',
   'background.js',
+  'settings-shared.js',
   'content.js',
   'injected.js',
   'sidepanel.html',
@@ -35,6 +36,7 @@ const include = [
   'i18n.js',
   'locales',
   'icons',
+  'CHANGELOG.md',
   'PRIVACY.md',
   'LICENSE',
   'README.md',

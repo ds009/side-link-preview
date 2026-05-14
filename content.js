@@ -1,7 +1,8 @@
 (() => {
   const DEFAULTS = {
     mode: 'blacklist',
-    list: [],
+    blacklist: [],
+    whitelist: [],
     linkScope: 'blank-only',
     locale: 'en',
   };
@@ -162,8 +163,7 @@
   let settings = { ...DEFAULTS };
 
   const applySettings = (raw) => {
-    settings = { ...DEFAULTS, ...(raw || {}) };
-    if (!Array.isArray(settings.list)) settings.list = [];
+    settings = normalizeSlpSettings(raw);
     announceHostState();
   };
 
@@ -216,7 +216,8 @@
   const isHostEnabled = (host) => {
     if (!host) return true;
     const h = String(host).toLowerCase();
-    const listed = settings.list.some((p) => matchDomain(h, p));
+    const list = activeDomainList(settings);
+    const listed = list.some((p) => matchDomain(h, p));
     if (settings.mode === 'whitelist') return listed;
     return !listed;
   };
@@ -286,6 +287,19 @@
   const LOGIN_PATH_RE =
     /^\/(?:login|signin|sign-in|sign_in|sso|saml|oauth2?|auth)(?:\/|$|\?|#)/i;
 
+  // [L] Well-known sign-in / SSO / payment / E2E-encrypted messaging hosts.
+  // Mirrors `content_scripts[].exclude_matches` in manifest.json — that list
+  // only stops US from RUNNING on these origins, but a link FROM a third
+  // party (e.g. gmail.com → accounts.google.com) still fires our click
+  // interceptor on the source page. These destinations universally:
+  //   - redirect the parent window in ways an iframe can't follow,
+  //   - refuse to embed (XFO / CSP frame-ancestors) even after our DNR rule,
+  //   - or are sensitive enough that funneling them through the panel is a
+  //     security smell.
+  // Keep this set in sync with the manifest's exclude_matches.
+  const AUTH_HOST_RE =
+    /^(?:accounts\.google\.com|accounts\.youtube\.com|login\.microsoftonline\.com|login\.live\.com|appleid\.apple\.com|idmsa\.apple\.com|signin\.aws\.amazon\.com|(?:[\w-]+\.)*okta\.com|(?:[\w-]+\.)*duosecurity\.com|(?:[\w-]+\.)*onelogin\.com|(?:[\w-]+\.)*auth0\.com|checkout\.stripe\.com|(?:[\w-]+\.)*paypal\.com|web\.whatsapp\.com|web\.telegram\.org|accounts\.firefox\.com|login\.yahoo\.com|(?:[\w-]+\.)*bitwarden\.com)$/i;
+
   const shouldIntercept = (a) => {
     if (!a || a.tagName !== 'A') return false;
     if (!a.href || a.href.startsWith('javascript:')) return false;
@@ -335,6 +349,9 @@
     const dest = destHostOf(a.href);
     if (dest && !isHostEnabled(dest)) return false;
 
+    // [L] Sensitive auth/SSO/payment/messaging hosts — see AUTH_HOST_RE.
+    if (dest && AUTH_HOST_RE.test(dest)) return false;
+
     // [G] Localhost / private IPs / .local — almost always dev or admin
     // pages with strict XFO and self-signed certs.
     if (dest && PRIVATE_HOST_RE.test(dest)) return false;
@@ -347,6 +364,12 @@
     try {
       if (LOGIN_PATH_RE.test(new URL(a.href, location.href).pathname))
         return false;
+    } catch (_) {}
+
+    // [M] Path-only sensitive flows — hostname checks miss these; mirrors
+    // manifest exclude_matches where relevant (e.g. github.com/sessions/*).
+    try {
+      if (isSensitiveAuthPreviewUrl(a.href)) return false;
     } catch (_) {}
 
     // Inside the Side Panel: intercept every (non-same-page) link so
@@ -509,6 +532,17 @@
     // least see the page somewhere.
     const dest = destHostOf(url);
     if (dest && !isHostEnabled(dest)) {
+      safeSendMessage({ type: 'OPEN_IN_NEW_TAB', url });
+      return;
+    }
+    // [L] Auth / SSO / payment / E2E-messaging destinations: same fallback
+    // as user-disabled hosts. The Side Panel cannot follow these flows
+    // anyway, so route to a real new tab.
+    if (dest && AUTH_HOST_RE.test(dest)) {
+      safeSendMessage({ type: 'OPEN_IN_NEW_TAB', url });
+      return;
+    }
+    if (isSensitiveAuthPreviewUrl(url)) {
       safeSendMessage({ type: 'OPEN_IN_NEW_TAB', url });
       return;
     }

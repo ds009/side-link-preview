@@ -1,6 +1,14 @@
 const params = new URLSearchParams(location.search);
 let tabId = Number(params.get('tabId')) || null;
 
+chrome.runtime.onMessage.addListener((msg) => {
+  if (!msg || msg.type !== 'SLP_REQUEST_SIDE_PANEL_CLOSE') return;
+  if (!tabId || msg.tabId !== tabId) return;
+  try {
+    window.close();
+  } catch (_) {}
+});
+
 const bar = document.querySelector('.bar');
 const frame = document.getElementById('frame');
 const addr = document.getElementById('addr');
