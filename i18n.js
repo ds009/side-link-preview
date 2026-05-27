@@ -2,14 +2,8 @@
 // Include it on the extension's own pages via a regular <script src="i18n.js">;
 // it exposes a global SLP_I18N object and boots itself automatically.
 (() => {
-  const LOCALES = {
-    en: 'English',
-    zh: '中文',
-    fr: 'Français',
-    es: 'Español',
-    de: 'Deutsch',
-    pt: 'Português',
-  };
+  const LOCALES =
+    typeof LOCALE_LABELS !== 'undefined' ? LOCALE_LABELS : { en: 'English' };
   const DEFAULT_LOCALE = 'en';
   const STORAGE_KEY = 'slpSettings';
 
@@ -17,24 +11,8 @@
   let currentLocale = DEFAULT_LOCALE;
   const readyListeners = [];
 
-  const normalize = (loc) => (LOCALES[loc] ? loc : DEFAULT_LOCALE);
-
-  // On first install (before the user has picked a language) try to follow
-  // the browser. navigator.languages looks like ["zh-CN", "zh", "en-US", "en"];
-  // pick the first primary subtag that matches one of our LOCALES, and fall
-  // back to the default if none hit.
-  const detectBrowserLocale = () => {
-    const list =
-      (navigator.languages && navigator.languages.length
-        ? navigator.languages
-        : [navigator.language]) || [];
-    for (const raw of list) {
-      if (!raw) continue;
-      const primary = String(raw).toLowerCase().split(/[-_]/)[0];
-      if (LOCALES[primary]) return primary;
-    }
-    return DEFAULT_LOCALE;
-  };
+  const normalize = (loc) =>
+    LOCALES[loc] ? loc : detectBrowserLocale?.() || DEFAULT_LOCALE;
 
   const loadDict = async (locale) => {
     const url = chrome.runtime.getURL(`locales/${locale}.json`);
@@ -64,7 +42,7 @@
     return fallback != null ? fallback : key;
   };
 
-  // Whitelisted tags allowed inside data-i18n-html (aligned with what the six
+  // Whitelisted tags allowed inside data-i18n-html (aligned with what the
   // locale files actually use). CWS automated scanners don't like to see
   // innerHTML = untrusted; even though `dict` is the extension's own packaged
   // JSON, we route every HTML snippet through a whitelist parser that copies
@@ -79,6 +57,8 @@
     'SPAN',
     'B',
     'I',
+    'UL',
+    'LI',
   ]);
 
   // Parse a dict HTML snippet into an inline sandbox; anything outside the
@@ -151,10 +131,21 @@
     let locale = null;
     try {
       const data = await chrome.storage.sync.get(STORAGE_KEY);
-      if (data[STORAGE_KEY]?.locale) locale = data[STORAGE_KEY].locale;
+      const saved = data[STORAGE_KEY];
+      if (
+        saved &&
+        typeof saved.locale === 'string' &&
+        SUPPORTED_LOCALES?.includes(saved.locale)
+      ) {
+        locale = saved.locale;
+      }
     } catch (_) {}
-    // No explicit user choice yet — follow the browser language.
-    if (!locale) locale = detectBrowserLocale();
+    if (!locale) {
+      locale =
+        typeof detectBrowserLocale === 'function'
+          ? detectBrowserLocale()
+          : DEFAULT_LOCALE;
+    }
     await setLocale(locale);
   };
 

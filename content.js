@@ -3,7 +3,10 @@
     mode: 'blacklist',
     blacklist: [],
     whitelist: [],
-    linkScope: 'blank-only',
+    linkScope: 'all',
+    openTrigger: 'click',
+    hoverOpen: false,
+    hoverDelayMs: 2000,
     locale: 'en',
   };
 
@@ -87,15 +90,74 @@
     }
   })();
 
-  // Send a "loaded" ping up to the Side Panel's top frame. Just reaching this
-  // line proves the site wasn't blocked by XFO/CSP, so sidepanel.js can cancel
-  // its "probably blocked" timeout banner.
-  if (inSidePanel) {
+  // Nested third-party iframes outside the Side Panel: skip storage reads and
+  // never register capture listeners — minimizes work on ads/embeds/widgets.
+  if (!inSidePanel && !inTopFrame) return;
+
+  const panelExtOrigin = (() => {
     try {
-      window.top.postMessage(
-        { __slp: 1, type: 'LOADED', url: location.href },
-        '*',
-      );
+      const a = location.ancestorOrigins;
+      if (a && a.length) return a[0];
+    } catch (_) {}
+    return null;
+  })();
+
+  const postToPanel = (payload) => {
+    try {
+      window.top.postMessage(payload, panelExtOrigin || '*');
+    } catch (_) {}
+  };
+
+  // ---------- Main-tab URL changes (incl. SPA) ----------
+  // When the left page navigates, background closes any open Side Panel for
+  // this tab. tabs.onUpdated misses some pushState navigations, so watch here.
+  if (!inSidePanel && inTopFrame) {
+    let lastMainUrl = location.href;
+    const isHashOnlyChange = (from, to) => {
+      try {
+        const prev = new URL(from);
+        const next = new URL(to);
+        return (
+          prev.origin === next.origin &&
+          prev.pathname === next.pathname &&
+          prev.search === next.search &&
+          prev.hash !== next.hash
+        );
+      } catch (_) {
+        return false;
+      }
+    };
+    const notifyMainUrlIfChanged = () => {
+      const url = location.href;
+      if (url === lastMainUrl) return;
+      if (isHashOnlyChange(lastMainUrl, url)) {
+        lastMainUrl = url;
+        return;
+      }
+      lastMainUrl = url;
+      safeSendMessage({ type: 'SLP_MAIN_URL_CHANGED', url });
+    };
+
+    window.addEventListener('popstate', notifyMainUrlIfChanged);
+    window.addEventListener('hashchange', notifyMainUrlIfChanged);
+
+    const wrapHistory = (fn) =>
+      function (...args) {
+        const ret = fn.apply(this, args);
+        notifyMainUrlIfChanged();
+        return ret;
+      };
+    try {
+      history.pushState = wrapHistory(history.pushState);
+      history.replaceState = wrapHistory(history.replaceState);
+    } catch (_) {}
+  }
+
+  // Send a "loaded" ping from the primary preview iframe only (not nested
+  // embeds). Reaching this line proves the site wasn't blocked by XFO/CSP.
+  if (isImmediatePanelChild) {
+    try {
+      postToPanel({ __slp: 1, type: 'LOADED', url: location.href });
     } catch (_) {}
   }
 
@@ -125,10 +187,7 @@
       if (show === lastShown) return;
       lastShown = show;
       try {
-        window.top.postMessage(
-          { __slp: 1, type: 'SCROLL_STATE', show },
-          '*',
-        );
+        postToPanel({ __slp: 1, type: 'SCROLL_STATE', show });
       } catch (_) {}
     };
 
@@ -162,76 +221,67 @@
 
   let settings = { ...DEFAULTS };
 
-  const applySettings = (raw) => {
-    settings = normalizeSlpSettings(raw);
-    announceHostState();
+  const isUrlEnabled = (url) => !isUrlDisabledByScope(url, settings);
+
+  const isEnabledForPage = () => {
+    if (isNativeOnlyHost(location.hostname)) return false;
+    if (isSensitivePreviewHost(location.hostname)) return false;
+    if (isSensitivePreviewPath(location.pathname)) return false;
+    return isUrlEnabled(location.href);
   };
 
-  // Tell injected.js (MAIN world) whether this host is on the user's disable
-  // list, so it can skip its window.open hijack entirely. On disabled hosts
-  // the extension should be a no-op — page-level window.open() must keep its
-  // native semantics, never get swapped for a fake stub.
-  const announceHostState = () => {
+  function announceHostState() {
     if (inSidePanel) return; // Inside the panel iframe the hijack is required.
     try {
       window.dispatchEvent(
         new CustomEvent('__SLP_HOST_STATE__', {
-          detail: { disabled: !isEnabledForHost() },
+          detail: { disabled: !isEnabledForPage() },
         }),
       );
     } catch (_) {}
+  }
+
+  const applySettings = (raw) => {
+    settings = normalizeSlpSettings(raw);
+    if (!hoverPreviewEnabled()) clearHoverTimer();
+    announceHostState();
   };
 
-  chrome.storage.sync
-    .get('slpSettings')
-    .then((data) => applySettings(data.slpSettings))
-    .catch(() => {
-      announceHostState();
+  // Side Panel, or Scope allows interception on this top-level document.
+  const interceptorsNeeded = () =>
+    inSidePanel || !isUrlDisabledByScope(location.href, settings);
+
+  let syncListenerInstalled = false;
+  let sessionListenerInstalled = false;
+  let interceptorsInstalled = false;
+
+  const attachSyncListener = () => {
+    if (syncListenerInstalled) return;
+    syncListenerInstalled = true;
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'sync') return;
+      if (!changes.slpSettings) return;
+      applySettings(changes.slpSettings.newValue);
+      if (interceptorsNeeded()) setupInterceptors();
     });
-
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'sync') return;
-    if (changes.slpSettings) applySettings(changes.slpSettings.newValue);
-  });
-
-  // Domain matching rules:
-  // - Exact host match, or subdomain match (example.com matches
-  //   www.example.com / blog.example.com).
-  // - * wildcard supported (e.g. *example* matches any host containing
-  //   "example").
-  const matchDomain = (host, pattern) => {
-    if (!pattern) return false;
-    const p = String(pattern).toLowerCase();
-    if (p.includes('*')) {
-      const re = new RegExp(
-        '^' +
-          p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') +
-          '$',
-      );
-      return re.test(host);
-    }
-    return host === p || host.endsWith('.' + p);
   };
 
-  const isHostEnabled = (host) => {
-    if (!host) return true;
-    const h = String(host).toLowerCase();
-    const list = activeDomainList(settings);
-    const listed = list.some((p) => matchDomain(h, p));
-    if (settings.mode === 'whitelist') return listed;
-    return !listed;
+  const attachSessionListener = () => {
+    if (sessionListenerInstalled) return;
+    sessionListenerInstalled = true;
+    chrome.storage.session.onChanged.addListener((changes) => {
+      const ch = changes.slpSettingsCache;
+      if (!ch?.newValue?.settings) return;
+      applySettings(ch.newValue.settings);
+      if (interceptorsNeeded()) setupInterceptors();
+    });
   };
 
-  const isEnabledForHost = () => isHostEnabled(location.hostname);
-
-  // Extract the destination hostname from a link href / window.open URL.
-  // Returns null on malformed input so callers can skip safely.
-  const destHostOf = (href) => {
-    try {
-      return new URL(href, location.href).hostname.toLowerCase();
-    } catch (_) {
-      return null;
-    }
+  const finishBootstrap = (raw) => {
+    applySettings(raw);
+    attachSyncListener();
+    attachSessionListener();
+    if (interceptorsNeeded()) setupInterceptors();
   };
 
   // Same-page check: ignore query string and hash. Used to skip in-page
@@ -273,37 +323,28 @@
   const DL_EXT_RE =
     /\.(?:pdf|zip|7z|tar|gz|tgz|rar|dmg|iso|exe|msi|apk|ipa|deb|rpm|pkg|xlsx?|docx?|pptx?|csv|mp3|mp4|mov|m4v|webm|avi|mkv|wav|flac|epub|mobi)$/i;
 
-  // [G] Localhost / RFC1918 private IPs / mDNS .local. Devs running
-  // self-signed certs and admin panels almost always want native nav, not
-  // a sandboxed iframe in the Side Panel.
-  const PRIVATE_HOST_RE =
-    /^(?:localhost|127(?:\.\d+){3}|10(?:\.\d+){3}|192\.168(?:\.\d+){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d+){2}|\[::1\]|[\w-]+\.local)$/i;
-
-  // [J] Path-prefix heuristic for SSO / login flows. Matches /login,
-  // /signin, /sign-in, /sign_in, /sso, /saml, /oauth, /oauth2, /auth — but
-  // only at the start of the path (depth 1) and only when followed by a
-  // separator, so /blog/oauth-tutorial and /authentication-strategy do
-  // NOT match.
-  const LOGIN_PATH_RE =
-    /^\/(?:login|signin|sign-in|sign_in|sso|saml|oauth2?|auth)(?:\/|$|\?|#)/i;
-
-  // [L] Well-known sign-in / SSO / payment / E2E-encrypted messaging hosts.
-  // Mirrors `content_scripts[].exclude_matches` in manifest.json — that list
-  // only stops US from RUNNING on these origins, but a link FROM a third
-  // party (e.g. gmail.com → accounts.google.com) still fires our click
-  // interceptor on the source page. These destinations universally:
-  //   - redirect the parent window in ways an iframe can't follow,
-  //   - refuse to embed (XFO / CSP frame-ancestors) even after our DNR rule,
-  //   - or are sensitive enough that funneling them through the panel is a
-  //     security smell.
-  // Keep this set in sync with the manifest's exclude_matches.
-  const AUTH_HOST_RE =
-    /^(?:accounts\.google\.com|accounts\.youtube\.com|login\.microsoftonline\.com|login\.live\.com|appleid\.apple\.com|idmsa\.apple\.com|signin\.aws\.amazon\.com|(?:[\w-]+\.)*okta\.com|(?:[\w-]+\.)*duosecurity\.com|(?:[\w-]+\.)*onelogin\.com|(?:[\w-]+\.)*auth0\.com|checkout\.stripe\.com|(?:[\w-]+\.)*paypal\.com|web\.whatsapp\.com|web\.telegram\.org|accounts\.firefox\.com|login\.yahoo\.com|(?:[\w-]+\.)*bitwarden\.com)$/i;
+  // [G] IP literals, localhost, corporate TLDs — native navigation only.
 
   const shouldIntercept = (a) => {
     if (!a || a.tagName !== 'A') return false;
     if (!a.href || a.href.startsWith('javascript:')) return false;
     if (!/^https?:/i.test(a.href)) return false;
+
+    // In-panel browsing: route links through sidepanel.js (NAVIGATE →
+    // frame.src). The preview iframe is sandboxed and main-page heuristics
+    // (bare domain, Scope, auth hosts, …) must not skip interception here —
+    // skipped clicks call preventDefault nowhere but also cannot navigate.
+    if (inSidePanel) {
+      if (a.hasAttribute('download')) return false;
+      if (isSamePage(a.href)) return false;
+      if (location.protocol === 'https:' && /^http:/i.test(a.href))
+        return false;
+      try {
+        if (isNativeOnlyHost(new URL(a.href, location.href).hostname))
+          return false;
+      } catch (_) {}
+      return true;
+    }
 
     // [A] Explicit download intent — let the browser download it.
     if (a.hasAttribute('download')) return false;
@@ -342,39 +383,20 @@
         return false;
     } catch (_) {}
 
-    // If the destination host is on the user's disable list, don't take it
+    // If the destination URL is on the user's disable list, don't take it
     // into the Side Panel — the user has explicitly told us this site
     // shouldn't load there. Browser-native behavior takes over: target=_blank
     // → new tab, plain link → in-place nav.
-    const dest = destHostOf(a.href);
-    if (dest && !isHostEnabled(dest)) return false;
-
-    // [L] Sensitive auth/SSO/payment/messaging hosts — see AUTH_HOST_RE.
-    if (dest && AUTH_HOST_RE.test(dest)) return false;
-
-    // [G] Localhost / private IPs / .local — almost always dev or admin
-    // pages with strict XFO and self-signed certs.
-    if (dest && PRIVATE_HOST_RE.test(dest)) return false;
-
-    // [J] /login, /signin, /sso, /saml, /oauth, /auth path prefixes —
-    // these are overwhelmingly auth flows that XFO themselves and need
-    // to redirect back to the parent window. Heuristic, but the regex
-    // requires the pattern to start at the path root and end at a
-    // separator, so blog articles like /blog/oauth-tutorial do not match.
+    let destUrl = '';
     try {
-      if (LOGIN_PATH_RE.test(new URL(a.href, location.href).pathname))
-        return false;
+      const destParsed = new URL(a.href, location.href);
+      destUrl = destParsed.href;
     } catch (_) {}
+    if (destUrl && !isUrlEnabled(destUrl)) return false;
 
-    // [M] Path-only sensitive flows — hostname checks miss these; mirrors
-    // manifest exclude_matches where relevant (e.g. github.com/sessions/*).
-    try {
-      if (isSensitiveAuthPreviewUrl(a.href)) return false;
-    } catch (_) {}
+    // [L] Sensitive hosts / checkout / auth paths — see settings-shared.js.
+    if (destUrl && isSensitivePreviewUrl(destUrl)) return false;
 
-    // Inside the Side Panel: intercept every (non-same-page) link so
-    // navigation stays in place.
-    if (inSidePanel) return true;
     if (settings.linkScope === 'blank-only' && a.target !== '_blank')
       return false;
     return true;
@@ -438,20 +460,114 @@
     // tab, don't spin up another Side Panel.
     if (inSidePanel) {
       try {
-        window.top.postMessage(
-          { __slp: 1, type: 'NAVIGATE', url },
-          '*',
-        );
+        postToPanel({ __slp: 1, type: 'NAVIGATE', url });
       } catch (err) {
         console.warn('[SideLinkPreview] postMessage to top:', err);
       }
       return;
     }
 
-    safeSendMessage({ type: 'OPEN_IN_SIDE_PANEL', url, trigger });
+    safeSendMessage({
+      type: 'OPEN_IN_SIDE_PANEL',
+      url,
+      trigger: trigger || 'click',
+    });
   };
 
-  // ---------- click / mousedown ----------
+  const openTriggerMode = () => settings.openTrigger || 'click';
+
+  const hoverPreviewEnabled = () => {
+    const mode = openTriggerMode();
+    return mode === 'hover' || !!settings.hoverOpen;
+  };
+
+  let hoverTimer = null;
+  let hoverAnchor = null;
+  let hoverThrottleTimer = null;
+  let hoverPendingEvent = null;
+
+  const clearHoverThrottle = () => {
+    if (hoverThrottleTimer) clearTimeout(hoverThrottleTimer);
+    hoverThrottleTimer = null;
+    hoverPendingEvent = null;
+  };
+
+  const clearHoverTimer = () => {
+    if (hoverTimer) clearTimeout(hoverTimer);
+    hoverTimer = null;
+    hoverAnchor = null;
+    clearHoverThrottle();
+  };
+
+  const hoverDelayMs = () => {
+    const n = Number(settings.hoverDelayMs);
+    if (!Number.isFinite(n)) return DEFAULTS.hoverDelayMs;
+    return Math.min(3000, Math.max(200, Math.round(n)));
+  };
+
+  const handleHoverOver = (e) => {
+    hoverPendingEvent = e;
+    if (hoverThrottleTimer) return;
+    hoverThrottleTimer = setTimeout(() => {
+      hoverThrottleTimer = null;
+      processHoverOver(hoverPendingEvent);
+      hoverPendingEvent = null;
+    }, 80);
+  };
+
+  const processHoverOver = (e) => {
+    if (!e) return;
+    if (inSidePanel || !inTopFrame) return;
+    if (!isEnabledForPage()) return;
+    if (!hoverPreviewEnabled()) return;
+    if (hasModifier(e)) return;
+
+    const a = findAnchor(e);
+    if (!shouldIntercept(a)) {
+      if (hoverAnchor) clearHoverTimer();
+      return;
+    }
+    if (a === hoverAnchor && hoverTimer) return;
+
+    clearHoverTimer();
+    hoverAnchor = a;
+    const url = a.href;
+    hoverTimer = setTimeout(() => {
+      hoverTimer = null;
+      sendOpen(url, 'hover');
+    }, hoverDelayMs());
+  };
+
+  const handleHoverOut = (e) => {
+    if (!hoverPreviewEnabled()) {
+      clearHoverThrottle();
+      return;
+    }
+    if (!hoverAnchor && !hoverThrottleTimer) return;
+    const a = findAnchor(e);
+    if (hoverAnchor && a !== hoverAnchor) return;
+    const to = e.relatedTarget;
+    if (hoverAnchor && to && hoverAnchor.contains(to)) return;
+    clearHoverTimer();
+  };
+
+  // ---------- click / mousedown / auxclick ----------
+  const handleMiddleClick = (e) => {
+    if (!inSidePanel && !inTopFrame) return;
+    if (!inSidePanel && !isEnabledForPage()) return;
+    if (e.button !== 1) return;
+    if (openTriggerMode() !== 'middle-click') return;
+    if (hasModifier(e)) return;
+
+    const a = findAnchor(e);
+    if (!shouldIntercept(a)) return;
+
+    // Chrome opens middle-click links in a new tab on auxclick, not click.
+    e.preventDefault();
+    e.stopPropagation();
+    sendOpen(a.href, 'click');
+  };
+
   const handleClick = (e) => {
     // [F] Skip clicks inside nested third-party iframes (YouTube embeds,
     // Disqus, ads, social widgets, etc.). Top frame is always allowed,
@@ -462,16 +578,22 @@
     // Click interception is always on. Only check scope rules on external
     // pages — inside the Side Panel blacklist/whitelist don't apply.
     if (!inSidePanel) {
-      if (!isEnabledForHost()) return;
+      if (!isEnabledForPage()) return;
     }
-    // Only intercept left-button clicks. Middle-click (button=1) is the
-    // browser convention for "open in new tab" and right-click (button=2)
-    // belongs to the context menu — both should always behave natively
-    // and never enter the Side Panel.
-    if (e.button !== 0) return;
 
     const a = findAnchor(e);
     if (!shouldIntercept(a)) return;
+
+    const mode = openTriggerMode();
+
+    // Middle click is handled on auxclick (see handleMiddleClick).
+    if (e.button === 1) return;
+
+    // Right-click belongs to the context menu — always native.
+    if (e.button !== 0) return;
+
+    // Outside the panel, left click is ignored in middle-click / hover-only modes.
+    if (!inSidePanel && (mode === 'middle-click' || mode === 'hover')) return;
 
     if (hasModifier(e)) {
       // The user explicitly asked for a non-Side-Panel behavior via a modifier
@@ -504,49 +626,65 @@
     sendOpen(a.href, 'click');
   };
 
-  document.addEventListener('mousedown', handleClick, true);
-  document.addEventListener('click', handleClick, true);
+  const setupInterceptors = () => {
+    if (interceptorsInstalled) return;
+    interceptorsInstalled = true;
+    document.addEventListener('mouseover', handleHoverOver, true);
+    document.addEventListener('mouseout', handleHoverOut, true);
+    document.addEventListener('auxclick', handleMiddleClick, true);
+    document.addEventListener('mousedown', handleClick, true);
+    document.addEventListener('click', handleClick, true);
+    window.addEventListener('__SLP_OPEN__', (e) => {
+      // [F] Same nested-iframe guard as handleClick. Note that injected.js
+      // also early-returns in this case, so we should never actually
+      // receive a __SLP_OPEN__ from a nested frame — but keep the check
+      // here as belt-and-braces.
+      if (!inSidePanel && !inTopFrame) return;
+      if (!inSidePanel && !isEnabledForPage()) return;
+      // The user just pressed a modifier key on the originating click — stay out
+      // of the way and let the page's window.open run as the user intended.
+      if (inBypassWindow()) return;
+      const url = e?.detail?.url;
+      if (typeof url !== 'string' || !/^https?:/i.test(url)) return;
+      if (isSamePage(url)) return;
 
-  // ---------- Echo of hijacked window.open (from injected.js) ----------
-  window.addEventListener('__SLP_OPEN__', (e) => {
-    // [F] Same nested-iframe guard as handleClick. Note that injected.js
-    // also early-returns in this case, so we should never actually
-    // receive a __SLP_OPEN__ from a nested frame — but keep the check
-    // here as belt-and-braces.
-    if (!inSidePanel && !inTopFrame) return;
-    if (!inSidePanel && !isEnabledForHost()) return;
-    // The user just pressed a modifier key on the originating click — stay out
-    // of the way and let the page's window.open run as the user intended.
-    if (inBypassWindow()) return;
-    const url = e?.detail?.url;
-    if (typeof url !== 'string' || !/^https?:/i.test(url)) return;
-    // Skip same-page window.open targets (rare but possible) so we don't
-    // re-render the current page in the Side Panel for no reason.
-    if (isSamePage(url)) return;
-    // Bare-domain window.open (e.g. a "Visit homepage" button) — same
-    // reasoning as the click path: leaving the site, not previewing.
-    if (isBareDomain(url)) return;
-    // Destination host is user-disabled. injected.js already returned a fake
-    // stub for window.open(), so we can't fall back to native popup behavior;
-    // ask background to open it as a new tab instead — the user will at
-    // least see the page somewhere.
-    const dest = destHostOf(url);
-    if (dest && !isHostEnabled(dest)) {
-      safeSendMessage({ type: 'OPEN_IN_NEW_TAB', url });
-      return;
-    }
-    // [L] Auth / SSO / payment / E2E-messaging destinations: same fallback
-    // as user-disabled hosts. The Side Panel cannot follow these flows
-    // anyway, so route to a real new tab.
-    if (dest && AUTH_HOST_RE.test(dest)) {
-      safeSendMessage({ type: 'OPEN_IN_NEW_TAB', url });
-      return;
-    }
-    if (isSensitiveAuthPreviewUrl(url)) {
-      safeSendMessage({ type: 'OPEN_IN_NEW_TAB', url });
-      return;
-    }
-    // Originated from window.open inside a user gesture — treat as a click.
-    sendOpen(url, 'click');
-  });
+      if (inSidePanel) {
+        sendOpen(url, 'click');
+        return;
+      }
+
+      // Bare-domain window.open (e.g. a "Visit homepage" button) — same
+      // reasoning as the click path: leaving the site, not previewing.
+      if (isBareDomain(url)) return;
+      // Destination URL is user-disabled. injected.js already returned a fake
+      // stub for window.open(), so we can't fall back to native popup behavior;
+      // ask background to open it as a new tab instead — the user will at
+      // least see the page somewhere.
+      if (!isUrlEnabled(url)) {
+        safeSendMessage({ type: 'OPEN_IN_NEW_TAB', url });
+        return;
+      }
+      if (isSensitivePreviewUrl(url)) {
+        safeSendMessage({ type: 'OPEN_IN_NEW_TAB', url });
+        return;
+      }
+      if (openTriggerMode() === 'hover') {
+        safeSendMessage({ type: 'OPEN_IN_NEW_TAB', url });
+        return;
+      }
+      // Originated from window.open inside a user gesture — treat as a click.
+      sendOpen(url, 'click');
+    });
+  };
+
+  Promise.all([
+    chrome.storage.session.get('slpSettingsCache').catch(() => ({})),
+    chrome.storage.sync.get('slpSettings').catch(() => ({})),
+  ])
+    .then(([sessionBag, syncBag]) => {
+      finishBootstrap(
+        pickNewerSettings(sessionBag.slpSettingsCache, syncBag.slpSettings),
+      );
+    })
+    .catch(() => finishBootstrap(undefined));
 })();

@@ -6,7 +6,7 @@
     <title>Side Link Preview — split-view link previewer for Chrome</title>
     <meta
       name="description"
-      content="Free, open-source Chrome extension that opens links in the Side Panel. Side-by-side reading on stock Chrome — no tracking, no ads."
+      content="Free Chrome extension: qualifying links open in the Side Panel side-by-side. Left/middle click or hover. 9 languages. No tracking."
     />
     <meta name="theme-color" content="#2563eb" />
 
@@ -14,7 +14,7 @@
     <meta property="og:title" content="Side Link Preview" />
     <meta
       property="og:description"
-      content="Click a link → it opens in Chrome's Side Panel side-by-side. Split-view reading on stock Chrome."
+      content="Qualifying links open in Chrome's Side Panel side-by-side. Left/middle click, hover preview, 9 languages. Free & open source."
     />
     <meta
       property="og:image"
@@ -428,9 +428,9 @@
         </h1>
         <p class="lede">
           Side Link Preview turns Chrome's Side Panel into a split-view
-          reading surface. Every <code>target="_blank"</code> link opens on
-          the right, side-by-side with the page you came from. Built for
-          stock Chrome.
+          reading surface. Qualifying links — same-tab and new-tab by default —
+          open on the right while you keep reading on the left. Left or middle
+          click, optional hover preview, nine languages.
         </p>
         <p class="subline">
           Free · Open source (MIT) · No tracking · No ads
@@ -481,7 +481,7 @@
           <span>★ MIT-licensed</span>
           <span>· Chrome 119+</span>
           <span>· Works on Edge</span>
-          <span>· 6 languages</span>
+          <span>· 9 languages</span>
         </div>
       </section>
 
@@ -537,46 +537,64 @@
         </div>
         <div class="feat">
           <div class="icon" aria-hidden="true">🛡</div>
-          <h3>Privacy by default</h3>
+          <h3>Privacy & safety by default</h3>
           <p>
-            No analytics, no tracking, no data ever leaves your browser.
-            Excludes sign-in, SSO and payment hosts.
+            No analytics or tracking. 125+ sensitive hosts excluded (sign-in,
+            banking, webmail, video calls, streaming, cloud consoles, crypto,
+            government TLDs). IP addresses and checkout/auth paths stay native.
           </p>
         </div>
         <div class="feat">
           <div class="icon" aria-hidden="true">🌗</div>
           <h3>Light & dark</h3>
           <p>
-            Follows your OS theme automatically. UI in English, 中文, Français,
-            Español, Deutsch, Português.
+            Follows your OS theme automatically. UI in nine languages —
+            defaults to your browser when supported (English, 中文, 日本語,
+            한국어, Русский, Français, Español, Deutsch, Português).
+          </p>
+        </div>
+        <div class="feat">
+          <div class="icon" aria-hidden="true">🖱</div>
+          <h3>Flexible open triggers</h3>
+          <p>
+            Left click or middle click to open the panel; optional hover preview
+            with delay works independently. Modifier keys still bypass to a real
+            new tab.
+          </p>
+        </div>
+        <div class="feat">
+          <div class="icon" aria-hidden="true">⊘</div>
+          <h3>One-click site opt-out</h3>
+          <p>
+            Toolbar button: <em>Don't use side panel on this site</em> adds the
+            current page to your blacklist without opening Settings.
           </p>
         </div>
         <div class="feat">
           <div class="icon" aria-hidden="true">⚙</div>
           <h3>Per-domain rules</h3>
           <p>
-            Blacklist or whitelist mode with <strong>two saved lists</strong>
-            (switching mode swaps the editor). Wildcards and automatic
-            subdomain matching. When Scope disables a tab, the panel turns off
-            for that tab; keyboard shortcut and toolbar can still open it on
-            purpose.
+            Blacklist or whitelist mode with <strong>two saved lists</strong>.
+            Domain, path-prefix, and wildcard rules; Scope disables automatic
+            previews per site while shortcuts still work on purpose.
           </p>
         </div>
         <div class="feat">
           <div class="icon" aria-hidden="true">↻</div>
           <h3>Mini browser inside the panel</h3>
           <p>
-            Address bar with Back / Forward / Refresh, auto-retry on
-            transient embed failures, and a friendly fallback card.
+            Address bar with Back / Forward / Refresh, **Open in main tab**,
+            per-site zoom, auto-retry on transient embed failures, and a
+            diagnostic fallback card with likely causes.
           </p>
         </div>
         <div class="feat">
           <div class="icon" aria-hidden="true">🧭</div>
           <h3>Smart link filtering</h3>
           <p>
-            Same-page anchors, downloads, login pages, sensitive hosts,
-            path-only cases such as GitHub <code>/sessions</code>, mixed content,
-            localhost — they stay native, never the panel.
+            Downloads, login/checkout paths, IP addresses, sensitive hosts,
+            same-page anchors, mixed content, localhost, and corporate
+            intranet domains stay native — never forced into the panel.
           </p>
         </div>
       </section>
@@ -589,7 +607,8 @@
             Install from the Chrome Web Store (or load unpacked from GitHub).
           </li>
           <li>
-            Click any <code>target="_blank"</code> link on any site — the page
+            Click a qualifying link on any site — by default that includes
+            same-tab links and links that open in a new tab — and the page
             loads in the right-hand Side Panel.
           </li>
           <li>
@@ -597,8 +616,9 @@
             Panel so it stays open while you switch tabs.
           </li>
           <li>
-            Open <em>Settings</em> for language, Scope (blacklist /
-            whitelist with independent lists), and link-scope rules.
+            Open <em>Settings</em> for language (defaults to your browser),
+            Scope (blacklist / whitelist with independent lists), link scope,
+            left/middle click trigger, and optional hover preview.
           </li>
         </ol>
       </section>
@@ -644,8 +664,8 @@
             A few sites enforce strict <code>frame-ancestors</code> via a
             <code>&lt;meta&gt;</code> tag, or detect iframe embedding via
             JavaScript. The panel auto-retries once and then, if it still
-            fails, shows a fallback card with an "Open in new tab" button —
-            one click, you're on the original tab.
+            fails, shows a fallback card with likely causes, technical
+            details, and an "Open in new tab" button.
           </p>
         </details>
 

@@ -14,7 +14,31 @@
     "SLP_I18N": "readonly",
     "normalizeSlpSettings": "readonly",
     "activeDomainList": "readonly",
-    "isSensitiveAuthPreviewUrl": "readonly"
+    "matchDomain": "readonly",
+    "isHostDisabledByScope": "readonly",
+    "isUrlDisabledByScope": "readonly",
+    "matchScopePattern": "readonly",
+    "scopeEntryForUrl": "readonly",
+    "probeEmbedBlock": "readonly",
+    "isSensitiveAuthPreviewUrl": "readonly",
+    "isSensitivePreviewUrl": "readonly",
+    "isSensitivePreviewHost": "readonly",
+    "isSensitivePreviewPath": "readonly",
+    "isRestrictedPublicSuffixHost": "readonly",
+    "isIpHostname": "readonly",
+    "isNativeOnlyHost": "readonly",
+    "isNativeOnlyPreviewUrl": "readonly",
+    "LOCALE_LABELS": "readonly",
+    "SUPPORTED_LOCALES": "readonly",
+    "detectBrowserLocale": "readonly",
+    "urlOnScopeList": "readonly",
+    "prepareScopeListAppend": "readonly",
+    "settingsByteLength": "readonly",
+    "settingsToSyncPayload": "readonly",
+    "SYNC_ITEM_SOFT_LIMIT": "readonly",
+    "pickNewerSettings": "readonly",
+    "readSettingsRev": "readonly",
+    "parseScopePattern": "readonly"
   },
   "rules": {
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
@@ -33,6 +57,15 @@
   "overrides": [
     {
       "files": ["settings-shared.js"],
+      "env": {
+        "node": true
+      },
+      "rules": {
+        "no-unused-vars": "off"
+      }
+    },
+    {
+      "files": ["embed-probe.js"],
       "rules": {
         "no-unused-vars": "off"
       }

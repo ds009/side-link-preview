@@ -30,36 +30,47 @@ jobs:
             exit 1
           fi
 
-      - name: Validate JSON files
-        run: |
-          set -e
-          for f in manifest.json locales/*.json; do
-            echo "Checking $f"
-            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))"
-          done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Validate JSON
+        run: npm run validate:json
+
+      - name: Validate locales
+        run: npm run validate:locales
+
+      - name: Validate manifest excludes
+        run: node scripts/validate-manifest-excludes.mjs
 
       - name: Build zip
+        run: npm run zip
+
+      - name: Read zip path
+        id: zip
         run: |
-          mkdir -p dist
-          ZIP="dist/side-link-preview-${{ steps.meta.outputs.version }}.zip"
-          zip -r "$ZIP" \
-            manifest.json background.js content.js injected.js \
-            sidepanel.html sidepanel.js options.html options.js \
-            i18n.js locales icons PRIVACY.md LICENSE README.md \
-            -x "*.DS_Store" "icons/icon-square.png"
-          echo "zip=$ZIP" >> "$GITHUB_ENV"
-          ls -lh "$ZIP"
+          VERSION=$(node -p "require('./manifest.json').version")
+          echo "path=dist/side-link-preview-${VERSION}.zip" >> "$GITHUB_OUTPUT"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: side-link-preview-${{ steps.meta.outputs.version }}
-          path: ${{ env.zip }}
+          path: ${{ steps.zip.outputs.path }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.zip }}
+          files: ${{ steps.zip.outputs.path }}
           draft: false
           prerelease: false
           generate_release_notes: true

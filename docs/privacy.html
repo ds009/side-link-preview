@@ -139,7 +139,7 @@
     <main>
       <header>
         <h1>Privacy Policy · Side Link Preview</h1>
-        <div class="updated">Last updated: 2026-05-14</div>
+        <div class="updated">Last updated: 2026-05-25</div>
       </header>
 
       <p>
@@ -202,8 +202,10 @@
             <td>
               User settings: blacklist/whitelist <strong>mode</strong>,
               <strong>separate</strong> blacklist and whitelist domain lists,
-              link scope, UI language, and an internal revision counter used only
-              to detect conflicting saves between tabs or devices
+              link scope (all links vs new-tab only), open trigger (left vs
+              middle click), optional hover preview and delay, UI language,
+              and an internal revision counter used only to detect conflicting
+              saves between tabs or devices
             </td>
             <td>Persist preferences and sync across your devices</td>
           </tr>
@@ -290,11 +292,11 @@
               Required for two reasons: (1) the
               <code>declarativeNetRequest</code> <code>modifyHeaders</code>
               rule above needs host access to take effect on the Side Panel
-              iframe's request URL; (2) the content script (declared in
-              <code>manifest.json</code>) needs to intercept outgoing link
-              clicks on any website to forward them to the Side Panel — the
-              core feature of the Extension. To reduce risk on sensitive
-              flows, the Extension explicitly excludes itself from
+              iframe's request URL; (2) the content scripts declared in
+              <code>manifest.json</code> must run on web pages so outgoing links
+              can be intercepted and forwarded into the Side Panel where your
+              <strong>Scope</strong> settings allow. To reduce risk on
+              sensitive flows, the Extension explicitly excludes itself from
               injecting on common sign-in, SSO, payment and
               end-to-end-encrypted messaging hosts. The exact host list
               is auditable in <code>manifest.json</code> under

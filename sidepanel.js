@@ -1,5 +1,5 @@
 const params = new URLSearchParams(location.search);
-let tabId = Number(params.get('tabId')) || null;
+const tabId = Number(params.get('tabId')) || null;
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (!msg || msg.type !== 'SLP_REQUEST_SIDE_PANEL_CLOSE') return;
@@ -15,7 +15,12 @@ const addr = document.getElementById('addr');
 const tip = document.getElementById('tip');
 const tipUrlEl = document.getElementById('tip-url');
 const tipOpenBtn = document.getElementById('tip-open');
+const tipOpenBlacklistBtn = document.getElementById('tip-open-blacklist');
 const tipCopyBtn = document.getElementById('tip-copy');
+const tipReasonsHeading = document.getElementById('tip-reasons-heading');
+const tipReasonsEl = document.getElementById('tip-reasons');
+const tipDebugDetails = document.getElementById('tip-debug');
+const tipDebugBody = document.getElementById('tip-debug-body');
 const empty = document.getElementById('empty');
 const settingsBtn = document.getElementById('settings');
 const openSettingsBtn = document.getElementById('open-settings');
@@ -23,10 +28,100 @@ const scrollTopBtn = document.getElementById('scroll-top');
 const backBtn = document.getElementById('back');
 const forwardBtn = document.getElementById('forward');
 const refreshBtn = document.getElementById('refresh');
+const openInMainBtn = document.getElementById('open-in-main');
 const loader = document.getElementById('loader');
 const zoomInBtn = document.getElementById('zoom-in');
 const zoomOutBtn = document.getElementById('zoom-out');
 const zoomLevelBtn = document.getElementById('zoom-level');
+const quickBlacklistBtn = document.getElementById('quick-blacklist');
+
+const t = (key, fallback) =>
+  window.SLP_I18N?.t?.(key, fallback) ?? (fallback ?? key);
+
+const urlAlreadyOnBlacklist = (url, list) => urlOnScopeList(url, list);
+
+/** Append current preview URL to blacklist (only when Scope mode is blacklist). */
+const persistQuickBlacklist = async () => {
+  if (!currentUrl || !/^https?:\/\//i.test(currentUrl))
+    return { ok: false, reason: 'bad-url' };
+  const entry = scopeEntryForUrl(currentUrl);
+  if (!entry) return { ok: false, reason: 'bad-url' };
+  let snap = {};
+  try {
+    snap = await chrome.storage.sync.get('slpSettings');
+  } catch (_) {
+    return { ok: false, reason: 'read' };
+  }
+
+  const prepared = prepareScopeListAppend(snap.slpSettings, {
+    entry,
+    listKind: 'blacklist',
+    checkUrl: currentUrl,
+  });
+  if (!prepared.ok) return prepared;
+  if (prepared.reason === 'already') return prepared;
+
+  try {
+    await chrome.storage.sync.set({ slpSettings: prepared.settings });
+    return { ok: true, reason: 'saved' };
+  } catch (_) {
+    return { ok: false, reason: 'write' };
+  }
+};
+
+let qbBusy = false;
+
+const syncQuickBlacklistChrome = async () => {
+  if (!quickBlacklistBtn) return;
+  let normalized;
+  try {
+    const bag = await chrome.storage.sync.get('slpSettings');
+    normalized = normalizeSlpSettings(bag.slpSettings);
+  } catch (_) {
+    quickBlacklistBtn.hidden = true;
+    return;
+  }
+
+  if (normalized.mode !== 'blacklist') {
+    quickBlacklistBtn.hidden = true;
+    return;
+  }
+
+  const url = currentUrl;
+  if (!url || !/^https?:\/\//i.test(url)) {
+    quickBlacklistBtn.hidden = true;
+    return;
+  }
+
+  let host = '';
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch (_) {
+    quickBlacklistBtn.hidden = true;
+    return;
+  }
+  if (!host) {
+    quickBlacklistBtn.hidden = true;
+    return;
+  }
+
+  quickBlacklistBtn.hidden = false;
+  const redundant = urlAlreadyOnBlacklist(url, normalized.blacklist);
+  quickBlacklistBtn.disabled = redundant;
+  const addTitle = t(
+    'btn_quick_blacklist_title',
+    "Don't use side panel on this site",
+  );
+  const doneTitle = t(
+    'btn_quick_blacklist_already_title',
+    'This site already matches the blacklist',
+  );
+  quickBlacklistBtn.title = redundant ? doneTitle : addTitle;
+  quickBlacklistBtn.setAttribute(
+    'aria-label',
+    redundant ? doneTitle : addTitle,
+  );
+};
 
 const showLoader = () => loader?.classList.add('show');
 const hideLoader = () => loader?.classList.remove('show');
@@ -81,6 +176,15 @@ const updateRefreshButton = () => {
   if (refreshBtn) refreshBtn.disabled = !currentUrl;
 };
 
+let openMainBusy = false;
+
+const updateOpenInMainButton = () => {
+  if (!openInMainBtn) return;
+  const enabled =
+    !!currentUrl && /^https?:\/\//i.test(currentUrl) && !openMainBusy;
+  openInMainBtn.disabled = !enabled;
+};
+
 const clearBlockTimer = () => {
   if (blockTimer) {
     clearTimeout(blockTimer);
@@ -89,6 +193,142 @@ const clearBlockTimer = () => {
 };
 
 const hideTip = () => tip.classList.remove('show');
+
+const BLOCK_PROBE_I18N = {
+  'timeout-no-loaded': [
+    'sidepanel_blocked_probe_timeout',
+    'Preview iframe did not finish loading in time (page scripts never confirmed).',
+  ],
+  redirect: [
+    'sidepanel_blocked_probe_redirect',
+    'HTTP redirect ({detail}) — the destination may refuse embedding.',
+  ],
+  xfo: [
+    'sidepanel_blocked_probe_xfo',
+    'X-Frame-Options response header: {detail}',
+  ],
+  'csp-header': [
+    'sidepanel_blocked_probe_csp_header',
+    'CSP frame-ancestors via HTTP header: {detail}',
+  ],
+  'meta-csp': [
+    'sidepanel_blocked_probe_meta_csp',
+    'CSP frame-ancestors in a <meta> tag: {detail} (not removed by the extension).',
+  ],
+  'js-frame-bust': [
+    'sidepanel_blocked_probe_js_bust',
+    'JavaScript frame-busting detected in page source.',
+  ],
+  'cookie-likely': [
+    'sidepanel_blocked_probe_cookie_likely',
+    'Possible session or third-party cookie requirement — may work in a tab but not in an iframe.',
+  ],
+  'redirect-login': [
+    'sidepanel_blocked_probe_redirect_login',
+    'Redirect toward a login URL ({detail}).',
+  ],
+  unknown: [
+    'sidepanel_blocked_probe_unknown',
+    'No explicit X-Frame-Options / CSP found — the site may block via JavaScript.',
+  ],
+  'fetch-error': [
+    'sidepanel_blocked_probe_fetch_error',
+    'Could not inspect this URL: {detail}',
+  ],
+};
+
+const formatProbeReason = (reason) => {
+  const pair = BLOCK_PROBE_I18N[reason?.id];
+  const template = pair ? t(pair[0], pair[1]) : reason?.detail || reason?.id || '';
+  return template.replace(/\{detail\}/g, reason?.detail || '');
+};
+
+let blockedProbeToken = 0;
+
+const resetBlockedProbeUi = () => {
+  if (tipReasonsEl) {
+    tipReasonsEl.innerHTML = '';
+    tipReasonsEl.hidden = true;
+  }
+  tipReasonsHeading?.setAttribute('hidden', '');
+  if (tipDebugBody) tipDebugBody.textContent = '';
+  if (tipDebugDetails) {
+    tipDebugDetails.hidden = true;
+    tipDebugDetails.open = false;
+  }
+};
+
+const renderBlockedProbe = (probe) => {
+  if (!probe) return;
+  const reasons = Array.isArray(probe.reasons) ? probe.reasons : [];
+  const debug = Array.isArray(probe.debug) ? probe.debug : [];
+
+  if (tipReasonsEl && reasons.length) {
+    tipReasonsEl.innerHTML = '';
+    for (const reason of reasons) {
+      const li = document.createElement('li');
+      li.textContent = formatProbeReason(reason);
+      tipReasonsEl.appendChild(li);
+    }
+    tipReasonsEl.hidden = false;
+    tipReasonsHeading?.removeAttribute('hidden');
+  }
+
+  if (tipDebugBody && debug.length) {
+    tipDebugBody.textContent = debug.join('\n');
+    if (tipDebugDetails) tipDebugDetails.hidden = false;
+  }
+};
+
+const syncTipBlacklistButton = async () => {
+  if (!tipOpenBlacklistBtn) return;
+  let normalized;
+  try {
+    const bag = await chrome.storage.sync.get('slpSettings');
+    normalized = normalizeSlpSettings(bag.slpSettings);
+  } catch (_) {
+    tipOpenBlacklistBtn.hidden = true;
+    return;
+  }
+  if (normalized.mode !== 'blacklist') {
+    tipOpenBlacklistBtn.hidden = true;
+    return;
+  }
+  if (!currentUrl || !/^https?:\/\//i.test(currentUrl)) {
+    tipOpenBlacklistBtn.hidden = true;
+    return;
+  }
+  tipOpenBlacklistBtn.hidden = false;
+  const redundant = urlAlreadyOnBlacklist(currentUrl, normalized.blacklist);
+  tipOpenBlacklistBtn.disabled = redundant;
+  tipOpenBlacklistBtn.textContent = redundant
+    ? t(
+        'btn_quick_blacklist_already_title',
+        'This page already matches the blacklist',
+      )
+    : t(
+        'sidepanel_blocked_open_blacklist',
+        'Open in new tab & add to blacklist',
+      );
+};
+
+const runBlockedProbe = async (token) => {
+  if (!currentUrl || !/^https?:\/\//i.test(currentUrl)) return;
+  try {
+    const probe = await chrome.runtime.sendMessage({
+      type: 'PROBE_EMBED_BLOCK',
+      url: currentUrl,
+    });
+    if (token !== blockedProbeToken) return;
+    renderBlockedProbe(probe);
+  } catch (err) {
+    if (token !== blockedProbeToken) return;
+    renderBlockedProbe({
+      reasons: [{ id: 'fetch-error', detail: err?.message || String(err) }],
+      debug: [String(err)],
+    });
+  }
+};
 
 // ---------- per-site zoom ----------
 // Visual scaling of the preview iframe via CSS transform. Layout-wise the
@@ -216,6 +456,7 @@ const load = (url, { isRetry = false, fromHistory = false } = {}) => {
   addr.value = url;
   updateAddrTitle();
   updateRefreshButton();
+  updateOpenInMainButton();
   // New page → reset back-to-top until content.js inside the new iframe
   // tells us the page is tall enough and scrolled enough.
   scrollTopBtn?.classList.remove('show');
@@ -241,6 +482,7 @@ const load = (url, { isRetry = false, fromHistory = false } = {}) => {
   const myToken = loadToken;
 
   hideTip();
+  resetBlockedProbeUi();
   empty.classList.add('hidden');
   frame.style.display = '';
   // Restore the user's saved per-site zoom for this host before painting,
@@ -257,6 +499,7 @@ const load = (url, { isRetry = false, fromHistory = false } = {}) => {
     if (myToken !== loadToken) return; // Superseded by a newer load().
     handleLoadFailure();
   }, BLOCK_TIMEOUT_MS);
+  void syncQuickBlacklistChrome();
 };
 
 // Auto-retry once before showing the blocked-page tip. Many failures clear
@@ -274,11 +517,15 @@ const handleLoadFailure = () => {
 const showBlockedTip = () => {
   hideLoader();
   frame.style.display = 'none';
+  resetBlockedProbeUi();
   if (tipUrlEl) {
     tipUrlEl.textContent = currentUrl;
     tipUrlEl.title = currentUrl;
   }
   tip.classList.add('show');
+  void syncTipBlacklistButton();
+  const token = ++blockedProbeToken;
+  void runBlockedProbe(token);
 };
 
 frame.addEventListener('error', () => {
@@ -365,11 +612,80 @@ refreshBtn?.addEventListener('click', () => {
   load(currentUrl, { fromHistory: true, isRetry: true });
 });
 
+const openInMainTab = async () => {
+  if (
+    !currentUrl ||
+    !/^https?:\/\//i.test(currentUrl) ||
+    openMainBusy ||
+    openInMainBtn?.disabled
+  ) {
+    return;
+  }
+  const id = await resolveTabId();
+  if (!id) return;
+  openMainBusy = true;
+  updateOpenInMainButton();
+  try {
+    const resp = await chrome.runtime.sendMessage({
+      type: 'OPEN_IN_MAIN_TAB',
+      tabId: id,
+      url: currentUrl,
+    });
+    if (resp?.ok) {
+      try {
+        window.close();
+      } catch (_) {}
+      return;
+    }
+    console.warn('[SideLinkPreview] open in main tab:', resp?.reason);
+  } catch (err) {
+    console.warn('[SideLinkPreview] open in main tab:', err);
+  } finally {
+    openMainBusy = false;
+    updateOpenInMainButton();
+  }
+};
+openInMainBtn?.addEventListener('click', () => {
+  void openInMainTab();
+});
+
 // Used by the "Open in new tab" button inside the blocked-page tip.
 const openInNewTab = () => {
   if (currentUrl) chrome.tabs.create({ url: currentUrl });
 };
 tipOpenBtn?.addEventListener('click', openInNewTab);
+
+let tipBlacklistBusy = false;
+tipOpenBlacklistBtn?.addEventListener('click', async () => {
+  if (
+    !currentUrl ||
+    !tipOpenBlacklistBtn ||
+    tipOpenBlacklistBtn.hidden ||
+    tipOpenBlacklistBtn.disabled ||
+    tipBlacklistBusy
+  ) {
+    return;
+  }
+  tipBlacklistBusy = true;
+  tipOpenBlacklistBtn.disabled = true;
+  try {
+    chrome.tabs.create({ url: currentUrl, active: true });
+    const res = await persistQuickBlacklist();
+    if (res.ok) {
+      tipOpenBlacklistBtn.textContent = t(
+        'sidepanel_blocked_open_blacklist_done',
+        'Added to blacklist — opened in new tab',
+      );
+      void syncTipBlacklistButton();
+      void syncQuickBlacklistChrome();
+    } else {
+      console.warn('[SideLinkPreview] tip blacklist:', res);
+      void syncTipBlacklistButton();
+    }
+  } finally {
+    tipBlacklistBusy = false;
+  }
+});
 
 let copyTimer = null;
 tipCopyBtn?.addEventListener('click', async () => {
@@ -407,21 +723,54 @@ const openOptions = () => {
 settingsBtn?.addEventListener('click', openOptions);
 openSettingsBtn?.addEventListener('click', openOptions);
 
-// If background opens the panel before setOptions takes effect, the URL may
-// not carry a tabId. Fall back to querying the currently active tab.
-const resolveTabId = async () => {
-  if (tabId) return tabId;
-  try {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      lastFocusedWindow: true,
-    });
-    if (tab?.id) tabId = tab.id;
-  } catch (err) {
-    console.warn('[SideLinkPreview] tabs.query:', err);
+quickBlacklistBtn?.addEventListener('click', async () => {
+  if (
+    !quickBlacklistBtn ||
+    quickBlacklistBtn.hidden ||
+    quickBlacklistBtn.disabled ||
+    qbBusy
+  ) {
+    return;
   }
-  return tabId;
-};
+  qbBusy = true;
+  try {
+    const res = await persistQuickBlacklist();
+    if (!res.ok) {
+      let msg =
+        t(
+          'quick_blacklist_save_failed_prefix',
+          'Could not save blacklist: ',
+        ) + (res.reason || '');
+      if (res.reason === 'quota') {
+        msg = t(
+          'storage_quota_warning',
+          'Domain list is too long for Chrome sync storage. Please shorten it.',
+        );
+      }
+      console.warn('[SideLinkPreview] quick blacklist:', res);
+      quickBlacklistBtn.title = msg;
+      quickBlacklistBtn.setAttribute('aria-label', msg);
+      setTimeout(() => void syncQuickBlacklistChrome(), 2400);
+      return;
+    }
+
+    if (res.reason === 'saved') {
+      quickBlacklistBtn.title = t('saved', 'Saved');
+      quickBlacklistBtn.setAttribute('aria-label', t('saved', 'Saved'));
+      setTimeout(() => void syncQuickBlacklistChrome(), 900);
+    } else {
+      void syncQuickBlacklistChrome();
+    }
+  } finally {
+    qbBusy = false;
+  }
+});
+
+// tabId must come from sidepanel.html?tabId=… (set by background on every
+// open). Do not guess via tabs.query — lastFocusedWindow would bind a panel
+// in window A to the active tab in window B; currentWindow still breaks when
+// the panel is pinned to another tab in the same window.
+const resolveTabId = async () => tabId;
 
 const readInitialUrl = async () => {
   const id = await resolveTabId();
@@ -432,6 +781,8 @@ const readInitialUrl = async () => {
 };
 
 updateRefreshButton();
+updateOpenInMainButton();
+void syncQuickBlacklistChrome();
 
 readInitialUrl();
 
@@ -445,12 +796,9 @@ chrome.storage.session.onChanged.addListener(async (changes) => {
   }
 });
 
-// Listen for messages posted by content.js running inside the Side Panel's
-// iframe (and any nested iframes). Accept only messages whose source belongs
-// to our own frame tree, so third-party scripts can't forge a NAVIGATE event
-// and redirect the panel to an arbitrary URL. Cross-origin Window objects
-// still expose `.top` as a readable structural property — if source.top
-// equals this sidepanel's window, we consider the origin trusted.
+// Listen for messages posted by content.js inside the preview iframe tree.
+// LOADED accepts only the primary iframe; NAVIGATE accepts nested frames too
+// (embed clicks) but still rejects sources outside the preview iframe.
 const isFromOurFrameTree = (source) => {
   if (!source || source === window) return false;
   try {
@@ -463,19 +811,64 @@ const isFromOurFrameTree = (source) => {
 const isSafeUrl = (url) =>
   typeof url === 'string' && /^https?:\/\//i.test(url);
 
+const hrefMatches = (a, b) => {
+  if (!a || !b) return false;
+  try {
+    return new URL(a).href === new URL(b).href;
+  } catch (_) {
+    return a === b;
+  }
+};
+
+/** NAVIGATE may originate from the preview iframe or a nested same-panel frame. */
+const isFromPreviewFrame = (source) => {
+  if (!source || source === window || !frame?.contentWindow) return false;
+  if (source === frame.contentWindow) return true;
+  let w = source;
+  for (let depth = 0; depth < 64; depth++) {
+    try {
+      if (w === frame.contentWindow) return true;
+      const parent = w.parent;
+      if (!parent || parent === w) break;
+      w = parent;
+    } catch (_) {
+      break;
+    }
+  }
+  return false;
+};
+
 window.addEventListener('message', (e) => {
   if (!isFromOurFrameTree(e.source)) return;
   const data = e.data;
   if (!data || data.__slp !== 1) return;
 
   if (data.type === 'LOADED') {
+    if (e.source !== frame.contentWindow) return;
+    if (data.url && currentUrl) {
+      try {
+        if (new URL(data.url).href !== new URL(currentUrl).href) return;
+      } catch (_) {
+        if (data.url !== currentUrl) return;
+      }
+    }
     clearBlockTimer();
     hideLoader();
+    blockedProbeToken++;
+    hideTip();
+    frame.style.display = '';
+    empty.classList.add('hidden');
+    retryAttempts = 0;
     return;
   }
 
   if (data.type === 'NAVIGATE' && isSafeUrl(data.url)) {
-    if (data.url !== currentUrl) load(data.url);
+    if (!isFromPreviewFrame(e.source)) return;
+    if (hrefMatches(data.url, currentUrl)) {
+      load(data.url, { fromHistory: true, isRetry: true });
+    } else {
+      load(data.url);
+    }
     return;
   }
 
@@ -490,13 +883,46 @@ window.addEventListener('message', (e) => {
 // Click → ask the iframe's top-level document (where content.js listens) to
 // smooth-scroll to the top. Cross-origin postMessage is allowed by browsers.
 scrollTopBtn?.addEventListener('click', () => {
+  let targetOrigin = '*';
+  try {
+    if (currentUrl) targetOrigin = new URL(currentUrl).origin;
+  } catch (_) {}
   try {
     frame.contentWindow?.postMessage(
       { __slp: 1, type: 'SCROLL_TOP' },
-      '*',
+      targetOrigin,
     );
   } catch (err) {
     console.warn('[SideLinkPreview] postMessage SCROLL_TOP:', err);
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.target === addr && document.activeElement === addr) return;
+  if (e.altKey && e.key === 'ArrowLeft' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+    if (backBtn && !backBtn.disabled) {
+      e.preventDefault();
+      backBtn.click();
+    }
+    return;
+  }
+  if (e.altKey && e.key === 'ArrowRight' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+    if (forwardBtn && !forwardBtn.disabled) {
+      e.preventDefault();
+      forwardBtn.click();
+    }
+    return;
+  }
+  if (
+    (e.ctrlKey || e.metaKey) &&
+    !e.altKey &&
+    !e.shiftKey &&
+    (e.key === 'r' || e.key === 'R')
+  ) {
+    if (refreshBtn && !refreshBtn.disabled && currentUrl) {
+      e.preventDefault();
+      refreshBtn.click();
+    }
   }
 });
 
@@ -538,6 +964,10 @@ chrome.storage.local
 // Cross-panel sync: if another open panel changes the zoom for the same
 // host, mirror it here so multi-window users don't see stale levels.
 chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.slpSettings) {
+    void syncQuickBlacklistChrome();
+    if (tip.classList.contains('show')) void syncTipBlacklistButton();
+  }
   if (area !== 'local') return;
   const change = changes[ZOOM_MAP_KEY];
   if (!change) return;

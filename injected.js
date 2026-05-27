@@ -85,12 +85,10 @@
     bypassUntil = Date.now() + ms;
   });
 
-  // Persistent "this host is on the user's disable list" flag, pushed by
-  // content.js after it loads slpSettings (and on every settings change).
-  // While true, window.open keeps its native semantics — the extension is a
-  // no-op on this page and the page's own popup logic must not be broken.
-  // Ignored inside the Side Panel itself, where hijacking is required.
-  let hostDisabled = false;
+  // hostDisabled mirrors content.js Scope: MAIN runs earlier than isolate reads
+  // storage — outside the Side Panel we assume disabled until __SLP_HOST_STATE__
+  // says otherwise so window.open stays native on blacklisted hosts.
+  let hostDisabled = !inExtFrame;
   window.addEventListener('__SLP_HOST_STATE__', (e) => {
     hostDisabled = !!e?.detail?.disabled;
   });
@@ -143,7 +141,8 @@
         typeof url === 'string' &&
         /^https?:/i.test(url) &&
         looksLikeBlankTarget(target) &&
-        !looksLikePopupWindow(features)
+        !looksLikePopupWindow(features) &&
+        !isSensitivePreviewUrl(url)
       ) {
         window.dispatchEvent(
           new CustomEvent('__SLP_OPEN__', { detail: { url } }),

@@ -26,6 +26,7 @@ if (existsSync(out)) unlinkSync(out);
 const include = [
   'manifest.json',
   'background.js',
+  'embed-probe.js',
   'settings-shared.js',
   'content.js',
   'injected.js',

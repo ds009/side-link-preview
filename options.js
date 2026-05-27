@@ -2,8 +2,16 @@ const DEFAULTS = {
   mode: 'blacklist',
   blacklist: [],
   whitelist: [],
-  linkScope: 'blank-only',
-  locale: 'en',
+  linkScope: 'all',
+  openTrigger: 'click',
+  hoverOpen: false,
+  hoverDelayMs: 2000,
+  locale: detectBrowserLocale(),
+};
+
+const normalizeLocale = (loc) => {
+  if (loc && LOCALE_LABELS[loc]) return loc;
+  return detectBrowserLocale();
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -15,6 +23,14 @@ const els = {
   list: $('#list'),
   whitelistReco: $('#whitelistReco'),
   locale: $('#locale'),
+  clickOpenMode: $$('input[name="clickOpenMode"]'),
+  hoverOpen: $('#hoverOpen'),
+  hoverRow: $('#hoverRow'),
+  hoverAlsoRow: $('#hoverAlsoRow'),
+  hoverDelayMs: $('#hoverDelayMs'),
+  hoverDelayWrap: $('#hoverDelayWrap'),
+  hintOpenTriggerClick: $('#hintOpenTriggerClick'),
+  hintOpenTriggerMiddle: $('#hintOpenTriggerMiddle'),
   status: $('#status'),
   reset: $('#reset'),
 };
@@ -36,9 +52,39 @@ const parseList = (raw) =>
     .map((l) => l.trim().toLowerCase())
     .filter(Boolean);
 
-const normalizeLocale = (loc) => {
-  const allowed = window.SLP_I18N?.LOCALES || { en: 1 };
-  return allowed[loc] ? loc : DEFAULTS.locale;
+const populateLocaleSelect = () => {
+  if (!els.locale) return;
+  els.locale.replaceChildren();
+  for (const code of SUPPORTED_LOCALES) {
+    const opt = document.createElement('option');
+    opt.value = code;
+    opt.textContent = LOCALE_LABELS[code];
+    els.locale.appendChild(opt);
+  }
+};
+
+const getClickOpenMode = () =>
+  getRadio(els.clickOpenMode) || DEFAULTS.openTrigger;
+
+const syncOpenTriggerUi = () => {
+  const mode = getClickOpenMode();
+  const clickMode = mode === 'click';
+  const middleMode = mode === 'middle-click';
+  const hoverOn = !!els.hoverOpen?.checked;
+
+  if (els.hintOpenTriggerClick)
+    els.hintOpenTriggerClick.hidden = !clickMode;
+  if (els.hintOpenTriggerMiddle)
+    els.hintOpenTriggerMiddle.hidden = !middleMode;
+
+  if (els.hoverDelayMs) els.hoverDelayMs.disabled = !hoverOn;
+  if (els.hoverDelayWrap) {
+    els.hoverDelayWrap.classList.toggle('disabled', !hoverOn);
+  }
+};
+
+const syncHoverDelayVisibility = () => {
+  syncOpenTriggerUi();
 };
 
 const syncWhitelistRecommendationVisibility = () => {
@@ -74,6 +120,12 @@ const render = (raw) => {
   lastMode = formState.mode;
   setRadio(els.mode, formState.mode);
   els.includeNonBlank.checked = formState.linkScope === 'all';
+  const clickMode =
+    formState.openTrigger === 'middle-click' ? 'middle-click' : 'click';
+  setRadio(els.clickOpenMode, clickMode);
+  if (els.hoverOpen) els.hoverOpen.checked = !!formState.hoverOpen;
+  if (els.hoverDelayMs) els.hoverDelayMs.value = formState.hoverDelayMs;
+  syncOpenTriggerUi();
   els.list.value =
     formState.mode === 'whitelist'
       ? formState.whitelist.join('\n')
@@ -84,11 +136,21 @@ const render = (raw) => {
 
 const readForm = () => {
   flushTextareaIntoFormState();
+  const clickMode = getClickOpenMode();
   return {
     mode: getRadio(els.mode) || DEFAULTS.mode,
     blacklist: [...formState.blacklist],
     whitelist: [...formState.whitelist],
     linkScope: els.includeNonBlank.checked ? 'all' : 'blank-only',
+    openTrigger: clickMode,
+    hoverOpen: !!els.hoverOpen?.checked,
+    hoverDelayMs: Math.min(
+      3000,
+      Math.max(
+        200,
+        parseInt(els.hoverDelayMs?.value, 10) || DEFAULTS.hoverDelayMs,
+      ),
+    ),
     locale: normalizeLocale(els.locale.value),
   };
 };
@@ -105,13 +167,9 @@ const flashSaved = () => {
 };
 
 // chrome.storage.sync has a hard 8192-byte limit per key. Leave a little
-// headroom: anything above 7500 bytes is rejected here with a friendly
+// headroom: anything above SYNC_ITEM_SOFT_LIMIT is rejected here with a friendly
 // message, so the user trims their domain list instead of eventually hitting
 // a cryptic "QUOTA_BYTES_PER_ITEM" error thrown by set().
-const SYNC_ITEM_SOFT_LIMIT = 7500;
-
-const byteLength = (obj) =>
-  new TextEncoder().encode(JSON.stringify(obj)).length;
 
 const save = async () => {
   let remoteSnap;
@@ -140,7 +198,7 @@ const save = async () => {
 
   const next = readForm();
   next._rev = Date.now();
-  const size = byteLength(next);
+  const size = settingsByteLength(next);
   if (size > SYNC_ITEM_SOFT_LIMIT) {
     els.status.textContent = t(
       'storage_quota_warning',
@@ -168,6 +226,7 @@ const debounce = (fn, ms) => {
 };
 
 const init = async () => {
+  populateLocaleSelect();
   let raw = {};
   try {
     const data = await chrome.storage.sync.get('slpSettings');
@@ -198,6 +257,18 @@ const init = async () => {
     });
   }
   els.includeNonBlank.addEventListener('change', save);
+  for (const el of els.clickOpenMode) {
+    el.addEventListener('change', () => {
+      syncOpenTriggerUi();
+      save();
+    });
+  }
+  els.hoverOpen?.addEventListener('change', () => {
+    syncHoverDelayVisibility();
+    save();
+  });
+  els.hoverDelayMs?.addEventListener('change', save);
+  els.hoverDelayMs?.addEventListener('input', debouncedSave);
   els.list.addEventListener('input', debouncedSave);
   els.locale.addEventListener('change', save);
 
@@ -207,7 +278,11 @@ const init = async () => {
       'Reset to defaults? The domain list will be cleared.',
     );
     if (!confirm(msg)) return;
-    const next = { ...DEFAULTS, _rev: Date.now() };
+    const next = {
+      ...DEFAULTS,
+      locale: detectBrowserLocale(),
+      _rev: Date.now(),
+    };
     await chrome.storage.sync.set({ slpSettings: next });
     render(next);
     flashSaved();

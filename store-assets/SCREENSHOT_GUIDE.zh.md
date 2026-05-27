@@ -145,7 +145,7 @@ npm run screenshots -- --locale=zh  # 用中文 UI 渲染设置页
 
 **文件：** `screenshot-5.png`
 
-目标：展示打磨度 + 6 国语言支持。
+目标：展示打磨度 + 9 种语言支持。
 
 **画面构图**
 - macOS 切到深色模式（`系统设置 → 外观 → 深色`）。
@@ -153,8 +153,8 @@ npm run screenshots -- --locale=zh  # 用中文 UI 渲染设置页
 - 拍照时右侧的 Side Panel 也是一个深色的页面（比如 MDN 的 dark theme）。
 
 **标题条：**
-> *"Auto light + dark · 6 languages · No tracking, no ads."*
-> （"自动浅/深色 · 6 种语言 · 无追踪 · 无广告。"）
+> *"Auto light + dark · 9 languages · No tracking, no ads."*
+> （"自动浅/深色 · 9 种语言 · 无追踪 · 无广告。"）
 
 ---
 

@@ -1,6 +1,6 @@
 # Privacy Policy · Side Link Preview
 
-_Last updated: 2026-05-14_
+_Last updated: 2026-05-25_
 
 Side Link Preview (the "Extension") respects and protects user privacy. This
 policy describes every kind of data handling the Extension performs at
@@ -38,7 +38,7 @@ itself syncs it for you:
 
 | Storage                    | Content                                                                        | Purpose                                                       |
 | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------- |
-| `chrome.storage.sync`      | User settings: blacklist/whitelist **mode**, **separate** blacklist and whitelist domain lists, link scope, UI language, and an internal revision counter used only to detect conflicting saves between tabs/devices | Persist preferences and sync them across your devices         |
+| `chrome.storage.sync`      | User settings: blacklist/whitelist **mode**, **separate** blacklist and whitelist domain lists, **link scope** (all links vs new-tab only), **open trigger** (left vs middle click), optional hover preview + delay, UI language, and an internal revision counter used only to detect conflicting saves between tabs/devices | Persist preferences and sync them across your devices         |
 | `chrome.storage.local`     | Per-site Side Panel zoom level (host → factor map)                             | Restore your preferred zoom for each domain on revisit        |
 | `chrome.storage.session`   | The "next URL to open in the Side Panel" for each tab                          | Relay the URL between the content script and the Side Panel  |
 
@@ -55,7 +55,7 @@ device-local and is **not** synced to your Google account.
 | `tabs`                           | Retrieve the current tab's ID and window ID so the Side Panel can be bound to the correct tab.                                                                                                     |
 | `declarativeNetRequest`          | Strip `X-Frame-Options`, `Content-Security-Policy`, `Content-Security-Policy-Report-Only` and `X-WebKit-CSP` response headers so target pages can be embedded in the Side Panel. The rule is a single dynamic rule scoped with `resourceTypes: ["sub_frame"]` **and** `initiatorDomains: [chrome.runtime.id]`. This means headers are modified **only on iframe requests whose initiator is this Extension itself (i.e. the Side Panel)**. Regular browsing on any website is completely unaffected — no other request on your device has any header modified. The rule is registered in `background.js` and is fully auditable in the source. |
 | `contextMenus`                   | Add a single "Open link in Side Panel" entry to Chrome's right-click menu on link targets. The menu item is local to the browser — no data about the link, the page, or the click is ever sent off-device. |
-| `host_permissions: <all_urls>`   | Required for two reasons: (1) the `declarativeNetRequest` `modifyHeaders` rule above needs host access to take effect on the Side Panel iframe's request URL; (2) the content script (declared in `manifest.json`) needs to intercept outgoing link clicks on any website to forward them to the Side Panel — the core feature of the Extension. To reduce risk on sensitive flows, the Extension explicitly excludes itself from injecting on common sign-in, SSO, payment and end-to-end-encrypted messaging hosts. The exact host list is auditable in `manifest.json` under `content_scripts[].exclude_matches`. |
+| `host_permissions: <all_urls>`   | Required for two reasons: (1) the `declarativeNetRequest` `modifyHeaders` rule above needs host access to take effect on the Side Panel iframe's request URL; (2) the content scripts declared in `manifest.json` need to run on web pages so outgoing links can be intercepted and forwarded into the Side Panel where your **Scope** settings allow. To reduce risk on sensitive flows, the Extension explicitly excludes itself from injecting on common sign-in, SSO, payment and end-to-end-encrypted messaging hosts. The exact host list is auditable in `manifest.json` under `content_scripts[].exclude_matches`. |
 
 ## Why we strip iframe security headers
 

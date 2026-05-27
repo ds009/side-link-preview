@@ -1,5 +1,5 @@
-/* global importScripts, normalizeSlpSettings, isSensitiveAuthPreviewUrl */
-importScripts('settings-shared.js');
+/* global importScripts, normalizeSlpSettings, isSensitivePreviewUrl, probeEmbedBlock, detectBrowserLocale */
+importScripts('settings-shared.js', 'embed-probe.js');
 
 const DNR_RULE_ID = 1;
 
@@ -42,68 +42,118 @@ const ensureDnrRule = async () => {
 // "Open link in Side Panel" — a one-shot, user-initiated bypass of the
 // blacklist / link-scope rules. Shown only on link targets.
 const CONTEXT_MENU_ID = 'slp-open-link-in-side-panel';
-const SUPPORTED_LOCALES = ['en', 'zh', 'fr', 'es', 'de', 'pt'];
+const CONTEXT_MENU_WHITELIST_ID = 'slp-add-to-whitelist';
 
-const pickLocale = (saved) => {
-  if (saved && SUPPORTED_LOCALES.includes(saved)) return saved;
-  // navigator.languages isn't available inside a service worker; chrome.i18n
-  // gives us a reasonable default. Fall back to English on any failure.
-  try {
-    const lang = (chrome.i18n.getUILanguage() || 'en').toLowerCase();
-    const base = lang.split('-')[0];
-    if (SUPPORTED_LOCALES.includes(base)) return base;
-  } catch (_) {}
-  return 'en';
+const PROBE_CACHE_TTL_MS = 5 * 60 * 1000;
+const PROBE_CACHE_MAX = 50;
+const probeCache = new Map();
+
+const cacheProbeResult = (url, result) => {
+  if (probeCache.size >= PROBE_CACHE_MAX) {
+    const oldest = probeCache.keys().next().value;
+    if (oldest) probeCache.delete(oldest);
+  }
+  probeCache.set(url, { at: Date.now(), result });
 };
 
-const getContextMenuTitle = async () => {
-  let locale = 'en';
+const getLocaleDict = async () => {
+  let locale = detectBrowserLocale();
   try {
     const data = await chrome.storage.sync.get('slpSettings');
-    locale = pickLocale(data?.slpSettings?.locale);
-  } catch (_) {
-    locale = pickLocale(null);
-  }
+    locale = normalizeSlpSettings(data?.slpSettings).locale;
+  } catch (_) {}
   try {
     const res = await fetch(chrome.runtime.getURL(`locales/${locale}.json`));
-    const dict = await res.json();
-    return dict.context_menu_open_in_side_panel || 'Open link in Side Panel';
+    return await res.json();
   } catch (_) {
-    return 'Open link in Side Panel';
+    return {};
+  }
+};
+
+const persistAddToWhitelist = async (pageUrl) => {
+  if (!isHttpUrl(pageUrl)) return { ok: false, reason: 'bad-url' };
+  let host = '';
+  try {
+    host = new URL(pageUrl).hostname.toLowerCase();
+  } catch (_) {
+    return { ok: false, reason: 'bad-url' };
+  }
+  if (!host) return { ok: false, reason: 'bad-url' };
+
+  let snap = {};
+  try {
+    snap = await chrome.storage.sync.get('slpSettings');
+  } catch (_) {
+    return { ok: false, reason: 'read' };
+  }
+
+  const prepared = prepareScopeListAppend(snap.slpSettings, {
+    entry: host,
+    listKind: 'whitelist',
+    checkUrl: `https://${host}/`,
+  });
+  if (!prepared.ok || prepared.reason === 'already') return prepared;
+
+  try {
+    await chrome.storage.sync.set({ slpSettings: prepared.settings });
+    return { ok: true, reason: 'saved' };
+  } catch (_) {
+    return { ok: false, reason: 'write' };
   }
 };
 
 const ensureContextMenu = async () => {
   try {
-    const title = await getContextMenuTitle();
+    const [dict, snap] = await Promise.all([
+      getLocaleDict(),
+      chrome.storage.sync.get('slpSettings').catch(() => ({})),
+    ]);
+    const normalized = normalizeSlpSettings(snap.slpSettings);
+    const openTitle =
+      dict.context_menu_open_in_side_panel || 'Open link in Side Panel';
+    const whitelistTitle =
+      dict.context_menu_add_to_whitelist || 'Add this site to whitelist';
+
     chrome.contextMenus.removeAll(() => {
       // Swallow any lastError from removeAll itself.
       void chrome.runtime.lastError;
       chrome.contextMenus.create(
         {
           id: CONTEXT_MENU_ID,
-          title,
+          title: openTitle,
           contexts: ['link'],
         },
         () => {
-          // Duplicate-id races can happen when onInstalled + onStartup +
-          // top-level ensure all fire in close succession. Ignore.
           void chrome.runtime.lastError;
         },
       );
+      if (normalized.mode === 'whitelist') {
+        chrome.contextMenus.create(
+          {
+            id: CONTEXT_MENU_WHITELIST_ID,
+            title: whitelistTitle,
+            contexts: ['page'],
+          },
+          () => {
+            void chrome.runtime.lastError;
+          },
+        );
+      }
     });
   } catch (err) {
     console.warn('[SideLinkPreview] contextMenu register failed:', err);
   }
 };
 
-// Refresh the context-menu label when the user switches UI language.
+// Refresh context-menu labels / whitelist entry when language or mode changes.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
   if (!changes.slpSettings) return;
-  const before = changes.slpSettings.oldValue?.locale;
-  const after = changes.slpSettings.newValue?.locale;
-  if (before !== after) ensureContextMenu();
+  const before = changes.slpSettings.oldValue;
+  const after = changes.slpSettings.newValue;
+  if (before?.locale !== after?.locale || before?.mode !== after?.mode) {
+    ensureContextMenu();
+  }
 });
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -124,19 +174,13 @@ ensureContextMenu();
 
 const isHttpUrl = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
 
-// Defense-in-depth mirror of content.js's AUTH_HOST_RE. Even if a stale or
-// pre-upgrade content script forwards a sign-in / SSO / payment / E2E-
-// messaging URL, the Side Panel must refuse to load it. Keep in sync with
-// `content_scripts[].exclude_matches` in manifest.json.
-const AUTH_HOST_RE =
-  /^(?:accounts\.google\.com|accounts\.youtube\.com|login\.microsoftonline\.com|login\.live\.com|appleid\.apple\.com|idmsa\.apple\.com|signin\.aws\.amazon\.com|(?:[\w-]+\.)*okta\.com|(?:[\w-]+\.)*duosecurity\.com|(?:[\w-]+\.)*onelogin\.com|(?:[\w-]+\.)*auth0\.com|checkout\.stripe\.com|(?:[\w-]+\.)*paypal\.com|web\.whatsapp\.com|web\.telegram\.org|accounts\.firefox\.com|login\.yahoo\.com|(?:[\w-]+\.)*bitwarden\.com)$/i;
+const panelReadyKey = (tabId) => `sp_ready_${tabId}`;
 
-const isAuthUrl = (u) => {
-  try {
-    return AUTH_HOST_RE.test(new URL(u).hostname);
-  } catch (_) {
-    return false;
-  }
+const markTabPanelReady = (tabId) => {
+  if (!tabId) return;
+  chrome.storage.session
+    .set({ [panelReadyKey(tabId)]: true })
+    .catch(() => {});
 };
 
 // Push a concrete URL into the current tab's Side Panel. Mirrors the open
@@ -146,11 +190,11 @@ const openUrlInSidePanel = async (url, tab) => {
   // Auth / SSO / payment / E2E-messaging destinations are unsafe to embed
   // even when the user explicitly chose "Open link in Side Panel" or
   // pressed the keyboard shortcut. Fall back to a real new tab.
-  if (isAuthUrl(url) || isSensitiveAuthPreviewUrl(url)) {
+  if (isSensitivePreviewUrl(url)) {
     try {
       await chrome.tabs.create({ url, active: true });
     } catch (err) {
-      console.warn('[SideLinkPreview] auth fallback:', err);
+      console.warn('[SideLinkPreview] sensitive-url fallback:', err);
     }
     return;
   }
@@ -158,6 +202,7 @@ const openUrlInSidePanel = async (url, tab) => {
   const windowId = tab.windowId;
   try {
     await chrome.storage.session.set({ [`sp_url_${tabId}`]: url });
+    markTabPanelReady(tabId);
     await chrome.sidePanel.setOptions({
       tabId,
       path: `sidepanel.html?tabId=${tabId}`,
@@ -172,9 +217,19 @@ const openUrlInSidePanel = async (url, tab) => {
 };
 
 chrome.contextMenus?.onClicked.addListener((info, tab) => {
-  if (info.menuItemId !== CONTEXT_MENU_ID) return;
-  const url = info.linkUrl || info.pageUrl;
-  openUrlInSidePanel(url, tab);
+  if (info.menuItemId === CONTEXT_MENU_ID) {
+    const url = info.linkUrl || info.pageUrl;
+    openUrlInSidePanel(url, tab);
+    return;
+  }
+  if (info.menuItemId === CONTEXT_MENU_WHITELIST_ID) {
+    const url = tab?.url || tab?.pendingUrl || info.pageUrl;
+    persistAddToWhitelist(url).then((res) => {
+      if (!res.ok && res.reason !== 'already') {
+        console.warn('[SideLinkPreview] add to whitelist:', res);
+      }
+    });
+  }
 });
 
 // ---------- Keyboard shortcut ----------
@@ -210,7 +265,7 @@ chrome.action?.onClicked.addListener(async (tab) => {
   // for this tab, and we don't want to overrule that just because the user
   // happened to click the toolbar icon while parked on a system page.
   const url = tab.url || tab.pendingUrl;
-  if (isSystemUrl(url)) return;
+  if (isSystemUrl(url) || isSensitivePreviewUrl(url)) return;
   try {
     // Re-enable in case our blacklist auto-disable closed the panel for this
     // tab. Toolbar click is an explicit user gesture, so honor it even on
@@ -220,6 +275,10 @@ chrome.action?.onClicked.addListener(async (tab) => {
       path: `sidepanel.html?tabId=${tab.id}`,
       enabled: true,
     });
+    if (isHttpUrl(url)) {
+      await chrome.storage.session.set({ [`sp_url_${tab.id}`]: url });
+    }
+    markTabPanelReady(tab.id);
     await chrome.sidePanel.open({ tabId: tab.id, windowId: tab.windowId });
   } catch (err) {
     console.warn('[SideLinkPreview] action.onClicked:', err);
@@ -227,6 +286,16 @@ chrome.action?.onClicked.addListener(async (tab) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // content.js reports SPA / history navigations that tabs.onUpdated can miss.
+  if (msg?.type === 'SLP_MAIN_URL_CHANGED') {
+    const tabId = sender.tab?.id;
+    if (tabId && typeof msg.url === 'string') {
+      refreshSidePanelForTab(tabId, msg.url, { fromNavigation: true });
+    }
+    sendResponse({ ok: true });
+    return;
+  }
+
   // Fallback path used by content.js when injected.js has hijacked
   // window.open() but the destination host is on the user's disable list.
   // We can't resurrect the original popup, so open the URL in a new tab.
@@ -242,6 +311,53 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return;
   }
 
+  if (msg?.type === 'PROBE_EMBED_BLOCK') {
+    if (!isHttpUrl(msg.url)) {
+      sendResponse({ ok: false, reasons: [], debug: [] });
+      return;
+    }
+    const cached = probeCache.get(msg.url);
+    if (cached && Date.now() - cached.at < PROBE_CACHE_TTL_MS) {
+      sendResponse({ ok: true, ...cached.result });
+      return;
+    }
+    probeEmbedBlock(msg.url)
+      .then((result) => {
+        cacheProbeResult(msg.url, result);
+        sendResponse({ ok: true, ...result });
+      })
+      .catch((err) => {
+        console.warn('[SideLinkPreview] PROBE_EMBED_BLOCK:', err);
+        sendResponse({
+          ok: false,
+          reasons: [{ id: 'fetch-error', detail: String(err) }],
+          debug: [String(err)],
+        });
+      });
+    return true;
+  }
+
+  if (msg?.type === 'OPEN_IN_MAIN_TAB') {
+    const tabId = msg.tabId;
+    const url = msg.url;
+    if (!tabId || !isHttpUrl(url)) {
+      sendResponse({ ok: false, reason: 'bad request' });
+      return;
+    }
+    clearPreviewSession(tabId);
+    chrome.tabs
+      .update(tabId, { url, active: true })
+      .then(() => {
+        requestSidePanelClose(tabId);
+        sendResponse({ ok: true });
+      })
+      .catch((err) => {
+        console.warn('[SideLinkPreview] OPEN_IN_MAIN_TAB:', err);
+        sendResponse({ ok: false, reason: String(err) });
+      });
+    return true;
+  }
+
   if (msg?.type !== 'OPEN_IN_SIDE_PANEL') return;
 
   // Only http(s) URLs are previewable in the iframe. content.js already
@@ -253,11 +369,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // Auth / SSO / payment / E2E-messaging hosts must never enter the Side
   // Panel even if a stale content script forwards them here. Fall back to
   // opening in a real new tab so the user still gets the page.
-  if (isAuthUrl(msg.url) || isSensitiveAuthPreviewUrl(msg.url)) {
-    chrome.tabs
-      .create({ url: msg.url, active: true })
-      .catch((err) => console.warn('[SideLinkPreview] auth fallback:', err));
-    sendResponse({ ok: false, reason: 'auth host' });
+  if (isSensitivePreviewUrl(msg.url)) {
+    sendResponse({ ok: false, reason: 'sensitive url' });
     return;
   }
 
@@ -267,6 +380,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: false, reason: 'no tab context' });
     return;
   }
+
+  const trigger = msg.trigger === 'hover' ? 'hover' : 'click';
+
+  // Hover only updates an already-open panel. Chrome requires a user gesture
+  // to open the Side Panel the first time on each tab.
+  if (trigger === 'hover') {
+    chrome.storage.session.get(panelReadyKey(tabId)).then((data) => {
+      if (!data[panelReadyKey(tabId)]) {
+        sendResponse({ ok: false, reason: 'need-click' });
+        return;
+      }
+      chrome.storage.session
+        .set({ [`sp_url_${tabId}`]: msg.url })
+        .then(() => sendResponse({ ok: true }))
+        .catch((err) => sendResponse({ ok: false, reason: String(err) }));
+    });
+    return true;
+  }
+
+  markTabPanelReady(tabId);
 
   // Critical: do NOT await. chrome.sidePanel.open() must be called inside the
   // synchronous onMessage call stack, otherwise Chrome considers the user
@@ -295,56 +428,44 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  chrome.storage.session.remove(`sp_url_${tabId}`).catch(() => {});
+  chrome.storage.session
+    .remove([`sp_url_${tabId}`, panelReadyKey(tabId)])
+    .catch(() => {});
 });
 
 // ---------- Auto-disable Side Panel on system + user-disabled hosts ----------
 // Hide this extension's Side Panel on:
 //   1. chrome://, chrome-extension://, devtools://, view-source:, about:
 //      and similar internal pages
-//   2. Any host the user has disabled via Scope settings (in blacklist mode:
-//      hosts in the list; in whitelist mode: hosts NOT in the list).
+//   2. Any URL the user has disabled via Scope settings (in blacklist mode:
+//      URLs in the list; in whitelist mode: URLs NOT in the list).
 const SYSTEM_URL_RE =
   /^(chrome|chrome-extension|chrome-search|chrome-untrusted|edge|devtools|view-source|about):/i;
 
 const isSystemUrl = (url) => !url || SYSTEM_URL_RE.test(url);
-
-// Mirrors content.js's matchDomain — exact host, subdomain (`.example.com`),
-// or `*`-wildcard pattern.
-const matchDomainBg = (host, pattern) => {
-  if (!pattern) return false;
-  const p = String(pattern).toLowerCase();
-  if (p.includes('*')) {
-    const re = new RegExp(
-      '^' +
-        p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') +
-        '$',
-    );
-    return re.test(host);
-  }
-  return host === p || host.endsWith('.' + p);
-};
-
-const isHostDisabledBySettings = (host, settings) => {
-  if (!host) return false;
-  const n = normalizeSlpSettings(settings);
-  const list = n.mode === 'whitelist' ? n.whitelist : n.blacklist;
-  const listed = list.some((p) => matchDomainBg(host, p));
-  if (n.mode === 'whitelist') return !listed;
-  return listed;
-};
 
 // Tiny in-memory cache to avoid hitting storage on every tab event. The
 // service worker can be torn down at any time, in which case the cache
 // rebuilds on first use — that's fine.
 let cachedSettings = null;
 let settingsCacheReady = false;
+
+const publishSettingsSession = async (raw) => {
+  try {
+    const n = normalizeSlpSettings(raw);
+    await chrome.storage.session.set({
+      slpSettingsCache: { rev: n._rev || 0, settings: n },
+    });
+  } catch (_) {}
+};
+
 const getSettings = async () => {
   if (settingsCacheReady) return cachedSettings;
   try {
     const data = await chrome.storage.sync.get('slpSettings');
     cachedSettings = data.slpSettings || {};
     settingsCacheReady = true;
+    await publishSettingsSession(cachedSettings);
   } catch (_) {
     // Don't cache failed reads as `{}` or we'd never retry until SW restart.
     settingsCacheReady = false;
@@ -356,22 +477,55 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'sync' && changes.slpSettings) {
     cachedSettings = changes.slpSettings.newValue || {};
     settingsCacheReady = true;
+    publishSettingsSession(cachedSettings);
   }
 });
+getSettings();
 
 const isUrlPanelDisabled = async (url) => {
   if (isSystemUrl(url)) return true;
-  let host;
-  try {
-    host = new URL(url).hostname.toLowerCase();
-  } catch (_) {
-    return false;
-  }
+  if (!isHttpUrl(url)) return true;
+  if (isSensitivePreviewUrl(url)) return true;
   const settings = await getSettings();
-  return isHostDisabledBySettings(host, settings);
+  return isUrlDisabledByScope(url, settings);
 };
 
-const refreshSidePanelForTab = async (tabId, url) => {
+const clearPreviewSession = (tabId) => {
+  if (!tabId) return;
+  chrome.storage.session
+    .remove([`sp_url_${tabId}`, panelReadyKey(tabId)])
+    .catch(() => {});
+};
+
+const requestSidePanelClose = (tabId) => {
+  chrome.runtime
+    .sendMessage({
+      type: 'SLP_REQUEST_SIDE_PANEL_CLOSE',
+      tabId,
+    })
+    .catch(() => {});
+};
+
+/** Close panel when the session preview URL matches Scope disable rules. */
+const closePanelIfPreviewScopeDisabled = async (tabId) => {
+  if (!tabId) return;
+  try {
+    const key = `sp_url_${tabId}`;
+    const data = await chrome.storage.session.get(key);
+    const previewUrl = data[key];
+    if (!previewUrl || !isHttpUrl(previewUrl)) return;
+    const settings = await getSettings();
+    if (!isUrlDisabledByScope(previewUrl, settings)) return;
+    clearPreviewSession(tabId);
+    requestSidePanelClose(tabId);
+  } catch (_) {}
+};
+
+const refreshSidePanelForTab = async (
+  tabId,
+  url,
+  { fromNavigation = false } = {},
+) => {
   if (!tabId) return;
   const disabled = await isUrlPanelDisabled(url);
   try {
@@ -379,16 +533,13 @@ const refreshSidePanelForTab = async (tabId, url) => {
   } catch (err) {
     console.warn('[SideLinkPreview] toggle panel:', err);
   }
-  // Chrome has no sidePanel.close(). If this tab's Side Panel is open and the
-  // page should no longer use it (system URL / scope rules), ask that panel
-  // instance to window.close() — it only reacts when ?tabId matches.
-  if (disabled) {
-    chrome.runtime
-      .sendMessage({
-        type: 'SLP_REQUEST_SIDE_PANEL_CLOSE',
-        tabId,
-      })
-      .catch(() => {});
+  // Chrome has no sidePanel.close(). Ask the matching panel instance to
+  // window.close() when:
+  //   • the tab navigated (left page moved on — stale preview), or
+  //   • this URL should not use the Side Panel (system / auth / scope).
+  if (fromNavigation || disabled) {
+    clearPreviewSession(tabId);
+    requestSidePanelClose(tabId);
   }
 };
 
@@ -401,9 +552,9 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url) {
-    refreshSidePanelForTab(tabId, changeInfo.url);
+    refreshSidePanelForTab(tabId, changeInfo.url, { fromNavigation: true });
   } else if (changeInfo.status === 'loading' && tab?.pendingUrl) {
-    refreshSidePanelForTab(tabId, tab.pendingUrl);
+    refreshSidePanelForTab(tabId, tab.pendingUrl, { fromNavigation: true });
   }
 });
 
@@ -420,13 +571,66 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const modeChanged = before.mode !== after.mode;
   if (!listChanged && !modeChanged) return;
 
-  chrome.tabs
-    .query({})
-    .then((tabs) => {
-      for (const t of tabs) {
-        if (!t.id) continue;
-        refreshSidePanelForTab(t.id, t.url || t.pendingUrl);
+  const scopePatternsForList = (list) => {
+    const patterns = [];
+    for (const raw of list) {
+      const { hostPattern } = parseScopePattern(raw);
+      if (!hostPattern || hostPattern.includes('*')) continue;
+      patterns.push(`*://${hostPattern}/*`, `*://*.${hostPattern}/*`);
+    }
+    return patterns;
+  };
+
+  const collectTabsForScopeRefresh = async () => {
+    const tabIds = new Set();
+    const [sessionAll, activeTabs] = await Promise.all([
+      chrome.storage.session.get(null),
+      chrome.tabs.query({ active: true }).catch(() => []),
+    ]);
+    for (const t of activeTabs) {
+      if (t?.id) tabIds.add(t.id);
+    }
+    for (const key of Object.keys(sessionAll || {})) {
+      const m = key.match(/^sp_(?:ready|url)_(\d+)$/);
+      if (m) tabIds.add(Number(m[1]));
+    }
+
+    if (modeChanged) {
+      const all = await chrome.tabs.query({}).catch(() => []);
+      for (const t of all) {
+        if (t?.id) tabIds.add(t.id);
       }
-    })
-    .catch(() => {});
+      return tabIds;
+    }
+
+    const urlPatterns = [
+      ...new Set([
+        ...scopePatternsForList(before.blacklist),
+        ...scopePatternsForList(before.whitelist),
+        ...scopePatternsForList(after.blacklist),
+        ...scopePatternsForList(after.whitelist),
+      ]),
+    ];
+    for (let i = 0; i < urlPatterns.length; i += 50) {
+      const chunk = urlPatterns.slice(i, i + 50);
+      const matched = await chrome.tabs.query({ url: chunk }).catch(() => []);
+      for (const t of matched) {
+        if (t?.id) tabIds.add(t.id);
+      }
+    }
+    return tabIds;
+  };
+
+  const refreshTabsAfterScopeChange = async () => {
+    const tabIds = await collectTabsForScopeRefresh();
+    for (const id of tabIds) {
+      try {
+        const tab = await chrome.tabs.get(id);
+        await refreshSidePanelForTab(id, tab.url || tab.pendingUrl);
+        await closePanelIfPreviewScopeDisabled(id);
+      } catch (_) {}
+    }
+  };
+
+  refreshTabsAfterScopeChange().catch(() => {});
 });

@@ -26,37 +26,37 @@ Developer Dashboard on submission day.
 ## 2. Short description (max 132 chars)
 
 ```
-Click a link → it opens in Chrome's Side Panel side-by-side. Split-view reading on stock Chrome. No tracking, open source.
+Qualifying links open in Chrome's Side Panel side-by-side. Left/middle click or hover. 9 languages. No tracking, open source.
 ```
 
 ## 3. Detailed description
 
 ```
-Side Link Preview turns Chrome's Side Panel into a split-view reading surface. Click any link that would normally open in a new tab and it loads on the right, side-by-side with the page you came from. No new tab, no context switch, no extra browser. Independent open-source project; not affiliated with any browser vendor.
+Side Link Preview turns Chrome's Side Panel into a split-view reading surface. Qualifying links — same-tab clicks and new-tab links by default — open on the right, side-by-side with the page you came from. No tab explosion, no context switch, no extra browser. Independent open-source project; not affiliated with any browser vendor.
 
 WHAT IT DOES
-• Click any target="_blank" link → it opens in Chrome's Side Panel.
-• Click another link inside the panel — it refreshes the panel in place. Keep following links without piling up tabs.
-• Hold ⌘ / Ctrl / Shift / Alt while clicking to fall back to a real new tab. Each modifier maps to a distinct, predictable behavior — the panel is never used when you hold one.
+• Click qualifying outgoing links → they open in Chrome's Side Panel
+• Follow links inside the panel — it refreshes in place without piling up tabs
+• Hold ⌘ / Ctrl / Shift / Alt while clicking to fall back to a real new tab
 
 KEY FEATURES
-• Side Panel address bar with Back / Forward / Refresh — works exactly like a tiny browser inside the panel
-• Per-site zoom: in-panel +/− buttons remember your preferred zoom for each domain
-• Auto-retry once on transient embed failures, then a clear "open in a new tab" fallback card
-• Per-domain blacklist or whitelist with **separate saved lists**, subdomain-aware matching and wildcard support
-• Smart link filtering: same-page anchors, downloads, login/OAuth pages, mixed content, localhost, and more open natively instead of in the panel
-• Right-click "Open link in Side Panel" — a one-shot bypass of every rule
-• Keyboard shortcut Alt+Shift+P to preview the current tab in the Side Panel
-• Automatic light / dark theme — follows your system
-• Works on sites that normally block iframes — via a tightly-scoped Side-Panel-only response-header rule (see Privacy below)
-• Sign-in, SSO, payment and end-to-end-encrypted messaging hosts are excluded from interception by default for security (the full host list lives in the open-source manifest)
-• Six built-in UI languages: English, 中文, Français, Español, Deutsch, Português
+• Mini browser in the panel: address bar, Back / Forward / Refresh, Open in main tab, per-site zoom
+• Auto-retry once on embed failures, then a diagnostic card with likely causes and technical details
+• Toolbar shortcut: "Don't use side panel on this site" (blacklist mode) — no Settings required
+• Per-domain blacklist or whitelist with **separate saved lists**, path-prefix rules and wildcards
+• Link scope: all qualifying links (default) or new-tab links only
+• Open trigger: left click (default) or middle click; optional hover preview with delay (independent of click mode)
+• Smart link filtering: downloads, login/checkout paths, IP addresses, mixed content, and more stay native
+• Right-click "Open link in Side Panel" and Alt+Shift+P to preview the current tab
+• Automatic light / dark theme; UI in nine languages (follows your browser on first install)
+• Works on many iframe-blocking sites via a tightly scoped Side-Panel-only response-header rule
 
-PRIVACY
-• No analytics. No tracking. No telemetry. No remote config.
-• No data ever leaves your browser. The extension itself has no server.
-• All settings live in your Chrome sync storage and travel with your Chrome profile only.
-• Header rewriting is restricted to iframe requests initiated by the extension itself (initiatorDomains: extension ID + resourceTypes: sub_frame). Regular browsing on every other tab is untouched.
+SECURITY & PRIVACY BY DEFAULT
+• 125+ sensitive hosts excluded from script injection: sign-in, SSO, banking, webmail, video calls, streaming, cloud consoles, crypto, government TLDs, and more (see manifest)
+• Also skips IP addresses, localhost, and corporate `.local` / `.internal` / `.corp` domains
+• Checkout, payment, and OAuth paths are never routed through the panel
+• No analytics, no tracking, no telemetry, no remote config — settings sync via Chrome only
+• Header rewriting applies only to iframe requests initiated by this extension's Side Panel
 • Full policy: https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
 
 WHO IT'S FOR
@@ -102,10 +102,11 @@ which is the extension's only user-facing surface.
 ### `storage`
 ```
 Persist the user's preferences (blacklist/whitelist mode, **separate**
-blacklist and whitelist domain lists, link scope, UI language, internal
-revision for multi-tab saves) and relay the URL to be opened between the
-content script and the Side Panel page. All data stays on the user's
-device and syncs only through their own Chrome profile.
+blacklist and whitelist domain lists, link scope, open trigger, optional
+hover preview + delay, UI language, internal revision for multi-tab
+saves) and relay the URL to be opened between the content script and the
+Side Panel page. All data stays on the user's device and syncs only
+through their own Chrome profile.
 ```
 
 ### `tabs`
@@ -150,11 +151,13 @@ interception, one MAIN-world for window.open hijack) need to be able to
 match arbitrary destinations, because users want to preview links on the
 sites THEY visit — there is no way to know that set in advance.
 
-To minimize risk, the manifest also declares an extensive
-`exclude_matches` list that prevents content-script injection on
-sign-in, SSO, payment and end-to-end-encrypted messaging hosts —
-the precise list is published in the open-source manifest under
-`content_scripts[].exclude_matches`.
+To minimize risk, the manifest declares an extensive
+`exclude_matches` list (125+ patterns) that prevents content-script injection
+on sign-in, SSO, banking, webmail, video calls, streaming, cloud consoles,
+crypto, government TLDs, and other sensitive hosts — the precise list is
+published in the open-source manifest under
+`content_scripts[].exclude_matches`. Runtime checks also skip IP addresses,
+localhost, checkout/auth paths, and corporate intranet domains.
 
 No page content is read, collected, or transmitted by the extension.
 ```
@@ -190,7 +193,7 @@ Certify:
 | Screenshot 2 — "Address bar with Back / Forward / Refresh + per-site zoom" | 1280×800 | ✅ `store-assets/screenshot-2.png` |
 | Screenshot 3 — "Per-site blacklist / whitelist" | 1280×800 | ✅ `store-assets/screenshot-3.png` |
 | Screenshot 4 — "Modifier keys still do what you expect" | 1280×800 | ✅ `store-assets/screenshot-4.png` |
-| Screenshot 5 — "Smart link filtering" | 1280×800 | ✅ `store-assets/screenshot-5.png` (optional) |
+| Screenshot 5 — "9 languages · light/dark" | 1280×800 | ✅ `store-assets/screenshot-5.png` (optional) |
 
 > Regenerate at any time with `npm run screenshots`. The script bakes
 > captions and frames into 1280×800 PNGs ready to upload.
@@ -215,9 +218,10 @@ Or equivalently by hand from the repo root:
 
 ```bash
 zip -r "side-link-preview-$(node -p "require('./manifest.json').version").zip" \
-  manifest.json background.js content.js injected.js \
-  sidepanel.html sidepanel.js options.html options.js \
-  i18n.js locales icons PRIVACY.md LICENSE README.md \
+  manifest.json background.js embed-probe.js settings-shared.js \
+  content.js injected.js sidepanel.html sidepanel.js \
+  options.html options.js i18n.js locales icons \
+  CHANGELOG.md PRIVACY.md LICENSE README.md \
   -x "*.DS_Store" "icons/icon-square.png"
 ```
 
@@ -229,7 +233,7 @@ Upload the resulting `.zip` under *Package → Upload new package*.
 
 After the review passes:
 
-1. Create a GitHub release `v1.0.0` linking to the CWS page.
+1. Create a GitHub release `v1.1.0` linking to the CWS page.
 2. Update `README.md` with the CWS install link at the top.
 3. Replace `REPLACE_WITH_EXTENSION_ID` in `docs/index.html` with the real ID. (Done: `jpbekmkggadbfacnnlnkjhdkgaoonapn`)
 4. Announce — see `store-assets/LAUNCH_POSTS.md` (HN / Product Hunt /
@@ -252,35 +256,33 @@ section under *Store listing → Localizations*.
 
 **Summary (≤ 132):**
 ```
-点击链接 → 自动在 Chrome 侧栏中并排打开，左侧继续阅读，右侧浏览新内容。原生 Chrome 即可使用，无追踪、开源。
+点击链接 → 在 Chrome 侧栏并排阅读。左键/中键或悬停预览，九种语言，无追踪、开源。
 ```
 
 **Description:**
 ```
-Side Link Preview 让原生 Chrome 拥有真正的分屏阅读体验。所有原本会在新标签页中打开的链接，都会在 Chrome 的侧边栏中并排打开：你继续在左侧阅读原文，右侧浏览新链接，不再被新标签页淹没。本扩展为独立开源项目，与任何浏览器厂商无附属关系。
+Side Link Preview 让原生 Chrome 拥有真正的分屏阅读体验。符合条件的外链（默认含普通链接和新标签页链接）会在 Chrome 侧边栏中并排打开：左侧继续阅读原文，右侧浏览新链接。本扩展为独立开源项目，与任何浏览器厂商无附属关系。
 
 它做了什么
-• 点击任意 target="_blank" 链接 → 在右侧 Side Panel 中打开
+• 点击符合条件的外链 → 在右侧 Side Panel 中打开
 • 在侧栏内继续点击链接，原地刷新，不堆积新标签
 • 按住 ⌘ / Ctrl / Shift / Alt + 点击 → 像往常一样打开普通新标签
 
 主要功能
-• 侧栏自带地址栏 + 后退 / 前进 / 刷新按钮，像一个迷你浏览器
-• 按站点缩放：侧栏内置 +/− 按钮，每个域名独立记忆缩放比例
-• 加载失败自动重试一次，再失败则显示「在新标签页打开」的兜底卡片
-• 按域名黑 / 白名单，**黑白名单各自独立存储**，支持子域名匹配和通配符
-• 智能链接过滤：同页锚点、下载、登录页、混合内容、localhost 等都自动走原生行为，不进侧栏
-• 右键菜单「在侧栏中打开链接」，可临时绕过所有规则
-• 快捷键 Alt+Shift+P 直接预览当前标签
-• 自动跟随系统浅色 / 深色主题
-• 对正常会拒绝 iframe 的网站也能加载 —— 只在扩展自己的 Side Panel 请求上去除头部
-• 默认不在登录、SSO、支付以及端到端加密通信类域名上注入（完整名单见开源 manifest）
-• 内置六种语言：English、中文、Français、Español、Deutsch、Português
+• 侧栏迷你浏览器：地址栏、后退/前进/刷新、在主标签页打开、按站点缩放
+• 嵌入失败自动重试一次，再失败显示诊断卡片（可能原因 + 技术详情）
+• 工具栏一键「此网站不再使用侧边栏」（黑名单模式，无需进设置）
+• 按域名黑/白名单，**黑白名单各自独立存储**，支持路径前缀与通配符
+• 链接范围：默认接管所有符合条件的外链，也可仅接管新标签页链接
+• 打开方式：左键（默认）或中键；悬停预览与点击独立，可设延迟
+• 智能过滤：下载、登录/结账路径、IP 地址、混合内容等走原生行为
+• 右键「在侧栏中打开链接」、快捷键 Alt+Shift+P 预览当前标签
+• 自动跟随系统浅色/深色主题；九种界面语言，首次安装跟随浏览器
 
-隐私
-• 不做统计、不做追踪、不做遥测、没有远程配置
-• 任何数据都不会离开浏览器，扩展本身没有服务器
-• 全部设置只保存在 Chrome 同步存储中，跟随你自己的 Chrome 账号同步
+安全与隐私
+• manifest 中 125+ 敏感域名不注入脚本：登录/SSO、银行、Webmail、视频会议、流媒体、云控制台、加密货币、政府域名等
+• 同时跳过 IP 地址、localhost、企业内网域名及 checkout/支付/OAuth 路径
+• 不做统计、不做追踪、无服务器；设置仅保存在 Chrome 同步存储
 • 完整隐私政策：https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
 
 适用人群
@@ -317,27 +319,25 @@ Cliquez sur un lien → il s'ouvre côte-à-côte dans le panneau latéral de Ch
 Side Link Preview transforme le panneau latéral de Chrome en surface de lecture côte-à-côte. Cliquez sur n'importe quel lien qui s'ouvrirait normalement dans un nouvel onglet et il s'affiche à droite, à côté de la page que vous lisiez. Pas de nouvel onglet, pas de rupture de contexte, pas de nouveau navigateur. Projet indépendant et open source, sans affiliation avec aucun éditeur de navigateur.
 
 CE QUE FAIT L'EXTENSION
-• Clic sur un lien target="_blank" → ouverture dans le panneau latéral
+• Clic sur un lien sortant éligible (par défaut : liens internes et nouvel onglet) → ouverture dans le panneau latéral
 • Les clics suivants à l'intérieur du panneau le mettent à jour sur place
 • ⌘ / Ctrl / Maj / Alt → bascule vers un véritable nouvel onglet, comme d'habitude
 
 FONCTIONNALITÉS CLÉS
-• Barre d'adresse intégrée avec Précédent / Suivant / Recharger
-• Zoom par site : boutons +/− dans le panneau, niveau mémorisé pour chaque domaine
-• Re-essai automatique en cas d'échec d'intégration, puis carte « ouvrir dans un nouvel onglet »
-• Listes blanche / noire par domaine, **stockées séparément** (sous-domaines + jokers)
-• Filtrage de liens intelligent : ancres dans la page, téléchargements, pages de login, contenu mixte, localhost — tout ça reste natif
-• Menu contextuel « Ouvrir dans le panneau latéral » et raccourci clavier Alt+Shift+P
-• Thème clair / sombre automatique
-• Fonctionne sur les sites qui bloquent normalement les iframes — via une règle d'en-tête limitée au panneau
-• Hôtes de connexion, SSO, paiement et messagerie chiffrée de bout en bout exclus par défaut pour des raisons de sécurité (liste complète dans le manifeste open source)
-• Six langues d'interface intégrées
+• Mini-navigateur : barre d'adresse, Préc./Suiv., Recharger, ouvrir dans l'onglet principal, zoom par site
+• Re-essai auto + carte diagnostic en cas d'échec d'intégration
+• Raccourci barre d'outils « Ne plus utiliser le panneau sur ce site » (mode liste noire)
+• Listes blanche / noire par domaine, **stockées séparément** (préfixes de chemin + jokers)
+• Portée des liens : tous les liens éligibles (par défaut) ou nouvel onglet uniquement
+• Déclencheur : clic gauche (défaut) ou molette ; aperçu au survol indépendant
+• Filtrage intelligent : téléchargements, chemins login/checkout, adresses IP, contenu mixte — natif
+• Menu contextuel, Alt+Shift+P, thème clair/sombre, neuf langues (suit le navigateur)
 
-CONFIDENTIALITÉ
-• Aucun analytique, aucun traçage, aucune télémétrie, aucune configuration distante
-• Aucune donnée ne quitte le navigateur — l'extension n'a pas de serveur
-• Les réglages restent dans le stockage Chrome de l'utilisateur
-• Politique complète : https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
+SÉCURITÉ ET CONFIDENTIALITÉ
+• 125+ hôtes sensibles exclus (connexion, banque, webmail, visio, streaming, consoles cloud, crypto, TLD gouvernementaux…)
+• Adresses IP, localhost, domaines d'entreprise et chemins checkout/OAuth exclus
+• Aucun analytique, aucune télémétrie — réglages dans Chrome uniquement
+• Politique : https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
 
 CONFIGURATION REQUISE
 Chrome 119 ou ultérieur. Fonctionne aussi sur Microsoft Edge 119+.
@@ -366,27 +366,25 @@ Pulsa un enlace → se abre en el panel lateral de Chrome, lado a lado. Vista di
 Side Link Preview convierte el panel lateral de Chrome en una superficie de lectura lado-a-lado. Pulsa cualquier enlace que normalmente se abriría en una pestaña nueva y aparecerá a la derecha, junto a la página que estabas leyendo. Sin pestaña nueva, sin cambio de contexto, sin otro navegador. Proyecto independiente de código abierto, sin afiliación con ningún proveedor de navegadores.
 
 QUÉ HACE
-• Pulsa cualquier enlace target="_blank" → se abre en el panel lateral
+• Pulsa enlaces salientes aptos (por defecto: internos y de nueva pestaña) → se abren en el panel lateral
 • Pulsa otros enlaces dentro del panel — se actualiza en su sitio
 • ⌘ / Ctrl / Mayús / Alt → vuelve a la pestaña nueva clásica
 
 FUNCIONES PRINCIPALES
-• Barra de direcciones integrada con Atrás / Adelante / Recargar
-• Zoom por sitio: botones +/− en el panel; el nivel se guarda por dominio
-• Reintento automático ante fallos transitorios, después una tarjeta para abrir en pestaña
-• Lista negra / blanca por dominio con **listas guardadas por separado** (subdominios + comodines)
-• Filtrado inteligente de enlaces: anclas internas, descargas, páginas de login, contenido mixto, localhost — todo eso se queda nativo
-• Menú contextual "Abrir en panel lateral" y atajo Alt+Shift+P
-• Tema claro / oscuro automático
-• Funciona en sitios que bloquean iframes — mediante una regla de cabeceras limitada al panel
-• Hosts de inicio de sesión, SSO, pagos y mensajería cifrada de extremo a extremo excluidos por defecto por seguridad (lista completa en el manifest de código abierto)
-• Seis idiomas de interfaz integrados
+• Mini-navegador: barra de direcciones, Atrás/Adelante/Recargar, abrir en pestaña principal, zoom
+• Reintento auto + tarjeta de diagnóstico si falla la integración
+• Atajo en barra: « No usar panel lateral en este sitio » (modo lista negra)
+• Lista negra/blanca por dominio, **listas separadas**, prefijos de ruta y comodines
+• Alcance: todos los enlaces aptos (defecto) o solo nueva pestaña
+• Disparador: clic izquierdo (defecto) o central; vista previa al pasar independiente
+• Filtrado: descargas, rutas login/checkout, IP, contenido mixto — nativo
+• Menú contextual, Alt+Shift+P, tema auto, nueve idiomas (sigue el navegador)
 
-PRIVACIDAD
-• Sin analítica, sin seguimiento, sin telemetría, sin configuración remota
-• Ningún dato sale del navegador — la extensión no tiene servidor
-• Ajustes en el almacenamiento de sincronización de Chrome
-• Política completa: https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
+SEGURIDAD Y PRIVACIDAD
+• 125+ hosts sensibles excluidos (login, banca, webmail, videollamadas, streaming, consolas, crypto, TLD gubernamentales…)
+• IP, localhost, dominios corporativos y rutas checkout/OAuth excluidos
+• Sin analítica ni telemetría — ajustes solo en Chrome
+• Política: https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
 
 REQUISITOS
 Chrome 119 o superior. También en Microsoft Edge 119+.
@@ -415,27 +413,25 @@ Klick einen Link → er öffnet sich im Chrome-Seitenbereich, nebeneinander. Get
 Side Link Preview macht den Chrome-Seitenbereich zur Lese-Oberfläche im Nebeneinander-Modus. Klicke auf einen Link, der normalerweise in einem neuen Tab öffnen würde — er erscheint rechts, neben der Seite, die du gerade liest. Kein neuer Tab, kein Kontextwechsel, kein zweiter Browser. Unabhängiges Open-Source-Projekt; nicht mit einem Browseranbieter verbunden.
 
 WAS ES TUT
-• Klick auf einen target="_blank"-Link → öffnet sich im Seitenbereich
+• Klick auf geeignete ausgehende Links (Standard: Same-Tab + Neue-Tab) → öffnet sich im Seitenbereich
 • Klicks innerhalb des Seitenbereichs aktualisieren ihn an Ort und Stelle
 • ⌘ / Strg / Umschalt / Alt → klassischer neuer Tab
 
 KERNFUNKTIONEN
-• Eingebaute Adresszeile mit Zurück / Vor / Neu laden
-• Pro-Domain-Zoom: +/−-Schaltflächen im Seitenbereich, der Pegel wird je Domain gespeichert
-• Automatischer einmaliger Wiederholversuch bei Lade-Fehlschlägen, danach eine "in neuem Tab öffnen"-Karte
-• Black-/Whitelist pro Domain, **getrennt gespeichert** (Unter-Domains + Wildcards)
-• Schlaue Link-Filterung: Seitenanker, Downloads, Login-Seiten, gemischte Inhalte, localhost — bleibt alles nativ
-• Kontextmenü „Im Seitenbereich öffnen" und Tastenkürzel Alt+Shift+P
-• Automatisches helles / dunkles Design
-• Funktioniert auch bei Seiten, die iframes normalerweise blockieren — über eine eng eingegrenzte Header-Regel
-• Login-, SSO-, Zahlungs- und Ende-zu-Ende-verschlüsselte-Messaging-Hosts werden aus Sicherheitsgründen standardmäßig ausgeschlossen (vollständige Liste im Open-Source-Manifest)
-• Sechs eingebaute UI-Sprachen
+• Mini-Browser: Adresszeile, Zurück/Vor/Neu laden, im Haupttab öffnen, Zoom pro Site
+• Auto-Wiederholversuch + Diagnose-Karte bei Embed-Fehlern
+• Toolbar: « Seitenleiste auf dieser Website nicht verwenden » (Blacklist-Modus)
+• Black-/Whitelist pro Domain, **getrennt gespeichert**, Pfadpräfixe + Wildcards
+• Link-Umfang: alle geeigneten Links (Standard) oder nur Neue-Tab
+• Auslöser: Linksklick (Standard) oder Mittelklick; Hover-Vorschau unabhängig
+• Filter: Downloads, Login/Checkout-Pfade, IP, Mixed Content — nativ
+• Kontextmenü, Alt+Shift+P, helles/dunkles Design, neun Sprachen
 
-DATENSCHUTZ
-• Keine Analytik, kein Tracking, keine Telemetrie, keine Remote-Konfiguration
-• Keine Datenübertragung — die Erweiterung hat keinen Server
-• Einstellungen ausschließlich im Chrome-Sync-Speicher
-• Vollständige Richtlinie: https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
+SICHERHEIT & DATENSCHUTZ
+• 125+ sensible Hosts ausgeschlossen (Login, Bank, Webmail, Video, Streaming, Cloud-Konsolen, Crypto, Gov-TLDs…)
+• IP, localhost, Firmendomains und Checkout/OAuth-Pfade ausgeschlossen
+• Kein Tracking, keine Telemetrie — Einstellungen nur in Chrome
+• Richtlinie: https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
 
 VORAUSSETZUNGEN
 Chrome 119 oder höher. Funktioniert auch in Microsoft Edge 119+.
@@ -464,27 +460,25 @@ Clique em um link → abre lado-a-lado no painel lateral do Chrome. Visão divid
 Side Link Preview transforma o painel lateral do Chrome em uma superfície de leitura lado-a-lado. Clique em qualquer link que normalmente abriria em uma aba nova e ele aparece à direita, ao lado da página que você estava lendo. Sem aba nova, sem troca de contexto, sem outro navegador. Projeto independente e de código aberto, sem afiliação com qualquer fornecedor de navegador.
 
 O QUE ELE FAZ
-• Clique em qualquer link target="_blank" → abre no painel lateral
+• Clique em links de saída elegíveis (padrão: mesma aba e nova aba) → abre no painel lateral
 • Cliques dentro do painel atualizam o conteúdo no mesmo lugar
 • ⌘ / Ctrl / Shift / Alt → volta à aba nova clássica
 
 PRINCIPAIS RECURSOS
-• Barra de endereços embutida com Voltar / Avançar / Recarregar
-• Zoom por site: botões +/− no painel, o nível é lembrado para cada domínio
-• Tentativa automática única em falhas transitórias, depois cartão para abrir em nova aba
-• Lista negra / branca por domínio com **armazenamento independente** (subdomínios + curingas)
-• Filtragem inteligente de links: âncoras, downloads, páginas de login, conteúdo misto, localhost — tudo isso fica nativo
-• Menu de contexto "Abrir no painel lateral" e atalho Alt+Shift+P
-• Tema claro / escuro automático
-• Funciona até em sites que normalmente bloqueiam iframes — via regra de cabeçalho restrita ao painel
-• Hosts de login, SSO, pagamentos e mensagens criptografadas de ponta a ponta excluídos por padrão por segurança (lista completa no manifest de código aberto)
-• Seis idiomas embutidos
+• Mini-navegador: barra de endereços, Voltar/Avançar/Recarregar, abrir na aba principal, zoom
+• Tentativa auto + cartão de diagnóstico em falhas de integração
+• Atalho na barra: « Não usar painel lateral neste site » (modo lista negra)
+• Lista negra/branca por domínio, **armazenamento independente**, prefixos de caminho + curingas
+• Escopo: todos os links elegíveis (padrão) ou apenas nova aba
+• Gatilho: clique esquerdo (padrão) ou do meio; hover independente do clique
+• Filtragem: downloads, rotas login/checkout, IP, conteúdo misto — nativo
+• Menu de contexto, Alt+Shift+P, tema auto, nove idiomas (segue o navegador)
 
-PRIVACIDADE
-• Sem analytics, sem rastreamento, sem telemetria, sem configuração remota
-• Nenhum dado sai do navegador — a extensão não tem servidor
-• Configurações apenas no armazenamento de sincronização do Chrome
-• Política completa: https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
+SEGURANÇA E PRIVACIDADE
+• 125+ hosts sensíveis excluídos (login, banco, webmail, vídeo, streaming, consoles, crypto, TLDs gov…)
+• IP, localhost, domínios corporativos e rotas checkout/OAuth excluídos
+• Sem analytics ou telemetria — configurações só no Chrome
+• Política: https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md
 
 REQUISITOS
 Chrome 119 ou superior. Também no Microsoft Edge 119+.

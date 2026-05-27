@@ -151,7 +151,7 @@ Two acceptable framings — pick whichever looks better:
 
 **File:** `screenshot-5.png`
 
-Goal: show polish + that the extension speaks 6 languages.
+Goal: show polish + that the extension speaks 9 languages.
 
 **Setup**
 - Switch macOS to dark mode (`System Settings → Appearance → Dark`).
@@ -160,7 +160,7 @@ Goal: show polish + that the extension speaks 6 languages.
   page in dark mode (e.g. MDN dark theme).
 
 **Caption:**
-> *"Auto light + dark · 6 languages · No tracking, no ads."*
+> *"Auto light + dark · 9 languages · No tracking, no ads."*
 
 ---
 

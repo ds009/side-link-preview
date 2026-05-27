@@ -156,6 +156,72 @@
         margin: 0;
         accent-color: var(--primary);
       }
+      .segmented {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 12px;
+        background: var(--card);
+      }
+      .segmented-option {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 120px;
+        padding: 8px 18px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        color: var(--fg-muted);
+        background: var(--card);
+        border-right: 1px solid var(--border);
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+      .segmented-option:last-child {
+        border-right: none;
+      }
+      .segmented-option:hover {
+        background: var(--card-alt);
+      }
+      .segmented-option:has(input:checked) {
+        background: var(--primary);
+        color: #fff;
+      }
+      .segmented-option:has(input:focus-visible) {
+        outline: 2px solid var(--primary);
+        outline-offset: -2px;
+      }
+      .segmented-option input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+        margin: 0;
+      }
+      .hover-row {
+        flex-wrap: wrap;
+        gap: 12px 16px;
+      }
+      .hover-row .hover-toggle {
+        flex: 1 1 auto;
+        min-width: 200px;
+        margin: 0;
+      }
+      .hover-delay-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 0 0 auto;
+        font-size: 13px;
+        color: var(--fg-muted);
+      }
+      .hover-delay-wrap.disabled {
+        opacity: 0.45;
+      }
       textarea {
         width: 100%;
         min-height: 120px;
@@ -251,7 +317,7 @@
         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
       }
       .callout {
-        margin-top: 12px;
+        margin: 12px 0 14px;
         padding: 10px 12px;
         border-radius: 8px;
         background: var(--warning-bg);
@@ -259,10 +325,9 @@
         color: var(--warning-fg);
         font-size: 12.5px;
         line-height: 1.55;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
+      }
+      .callout > * + * {
+        margin-top: 10px;
       }
       .callout.info {
         background: var(--primary-tint);
@@ -309,6 +374,23 @@
         border: 1px solid var(--primary-tint-border);
         color: var(--primary-tint-fg);
         font-size: 11.5px;
+      }
+      .callout.examples ul {
+        margin: 8px 0 0;
+        padding-left: 18px;
+      }
+      .callout.examples li {
+        margin: 4px 0;
+      }
+      .callout.examples li code {
+        font-size: 12px;
+      }
+      .field-label {
+        display: block;
+        margin: 0 0 6px;
+        font-size: 12.5px;
+        font-weight: 500;
+        color: var(--fg-muted);
       }
       footer {
         margin-top: 12px;
@@ -383,24 +465,16 @@
         <p class="hint" data-i18n="language_hint">
           Language of the settings page and side panel UI.
         </p>
-        <select id="locale">
-          <option value="en">English</option>
-          <option value="zh">中文</option>
-          <option value="fr">Français</option>
-          <option value="es">Español</option>
-          <option value="de">Deutsch</option>
-          <option value="pt">Português</option>
-        </select>
+        <select id="locale" aria-label="Language"></select>
       </section>
 
       <section>
         <h2 data-i18n="section_scope">Scope</h2>
         <p class="hint" data-i18n-html="scope_hint_html">
-          One domain per line. Subdomains are matched automatically — entering
-          <code>example.com</code> also matches <code>www.example.com</code> and
-          <code>blog.example.com</code>. The <code>*</code> wildcard is also
-          supported (e.g. <code>*keyword*</code> matches any domain containing
-          <code>keyword</code>).
+          One entry per line. Use a domain alone for an entire site, or append a
+          path prefix after the domain to match only that section. Subdomains
+          match automatically; <code>*</code> wildcards work in domains and
+          paths.
         </p>
         <div
           class="callout info"
@@ -434,11 +508,39 @@
           <strong>whitelist</strong> mode above — the Side Panel only runs on
           sites you list, so it won't open where you don't need it.
         </div>
-        <div style="margin-top: 14px;">
+        <div
+          class="callout info examples"
+          data-i18n-html="scope_examples_html"
+        >
+          <strong>Examples</strong>
+          <ul>
+            <li>
+              <code>example.com</code> — whole site (every path on that domain)
+            </li>
+            <li>
+              <code>example.com/admin</code> — only
+              <code>/admin</code> and sub-paths (e.g.
+              <code>/admin/users</code>)
+            </li>
+            <li>
+              <code>news.example.com/blog</code> — blog section on one subdomain
+            </li>
+            <li>
+              <code>*shop*</code> — any host name containing
+              <code>shop</code>
+            </li>
+          </ul>
+          Path rules ignore query strings and <code>#</code> fragments.
+          <code>/admin</code> does not match <code>/administrator</code>.
+        </div>
+        <label class="field-label" for="list" data-i18n="scope_list_label"
+          >Rules (one per line)</label
+        >
+        <div style="margin-top: 0">
           <textarea
             id="list"
             data-i18n-attr="placeholder=scope_placeholder"
-            placeholder="example.com&#10;*keyword*"
+            placeholder="example.com&#10;example.com/admin&#10;*keyword*"
             spellcheck="false"
           ></textarea>
         </div>
@@ -447,15 +549,15 @@
       <section>
         <h2 data-i18n="section_link_scope">Link scope</h2>
         <p class="hint" data-i18n-html="link_scope_hint_html">
-          By default only <code>target="_blank"</code> links (the ones a page
-          asks to open in a new tab) are intercepted. Enable the option below
-          to also send same-tab (non-<code>_blank</code>) links to the side
-          panel.
+          By default, eligible outgoing links — including same-tab links and
+          links that open in a new tab — open in the side panel. Uncheck the
+          option below to intercept only new-tab links and leave same-tab
+          navigation to the browser.
         </p>
         <label class="toggle">
-          <input type="checkbox" id="includeNonBlank" />
+          <input type="checkbox" id="includeNonBlank" checked />
           <span data-i18n="link_scope_include_nonblank">
-            Also open non-_blank links in the side panel
+            Also open links that don't open in a new tab in the side panel
           </span>
         </label>
         <div
@@ -466,8 +568,64 @@
           Want a link to <strong>skip</strong> the Side Panel? Hold
           <kbd>⌘</kbd> / <kbd>Ctrl</kbd> for a new tab, <kbd>⇧</kbd> for a new
           window, or <kbd>⌥</kbd> Option / <kbd>Alt</kbd> to open in the
-          current tab. To always skip a whole site, add its domain under
-          <em>Scope</em> above.
+          current tab. To always skip a page or whole site, add its domain or
+          path prefix under <em>Scope</em> above.
+        </div>
+        <p class="field-label" data-i18n="open_trigger_label">
+          How links open in the Side Panel
+        </p>
+        <div class="segmented" id="clickOpenSwitch" role="radiogroup">
+          <label class="segmented-option">
+            <input type="radio" name="clickOpenMode" value="click" checked />
+            <span data-i18n="open_trigger_click">Left click</span>
+          </label>
+          <label class="segmented-option">
+            <input
+              type="radio"
+              name="clickOpenMode"
+              value="middle-click"
+            />
+            <span data-i18n="open_trigger_middle">Middle click</span>
+          </label>
+        </div>
+        <div
+          class="callout info"
+          id="hintOpenTriggerClick"
+          data-i18n-html="open_trigger_click_hint_html"
+        >
+          Left click opens eligible links in the Side Panel. Enable
+          <em>Also preview on hover</em> below to add hover previews without
+          changing click behavior.
+        </div>
+        <div
+          class="callout info"
+          id="hintOpenTriggerMiddle"
+          hidden
+          data-i18n-html="open_trigger_middle_hint_html"
+        >
+          Only <strong>middle-click</strong> (scroll-wheel click) on a link
+          opens the Side Panel. Left click keeps the browser's normal behavior.
+        </div>
+        <div class="inline hover-row" id="hoverRow">
+          <label class="toggle hover-toggle" id="hoverAlsoRow">
+            <input type="checkbox" id="hoverOpen" />
+            <span data-i18n="hover_open_enable">
+              Also preview on hover
+            </span>
+          </label>
+          <div class="hover-delay-wrap" id="hoverDelayWrap">
+            <label for="hoverDelayMs" data-i18n="hover_delay_label"
+              >Hover delay (ms)</label
+            >
+            <input
+              id="hoverDelayMs"
+              type="number"
+              min="200"
+              max="3000"
+              step="50"
+              value="2000"
+            />
+          </div>
         </div>
       </section>
 
@@ -496,8 +654,8 @@
         <span data-i18n="sponsor_cta">Sponsor on GitHub</span>
       </a>
     </div>
-    <script src="i18n.js"></script>
     <script src="settings-shared.js"></script>
+    <script src="i18n.js"></script>
     <script src="options.js"></script>
   </body>
 </html>
