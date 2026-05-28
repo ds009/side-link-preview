@@ -3,10 +3,10 @@
 Copy-paste-ready posts for the day the extension goes live. Each one is
 already trimmed to the platform's character / style limits.
 
-> Replace these placeholders before posting:
-> - `{{CWS_URL}}` → final Chrome Web Store URL
-> - `{{LANDING_URL}}` → e.g. `https://ds009.github.io/side-link-preview/`
-> - `{{REPO_URL}}` → e.g. `https://github.com/ds009/side-link-preview`
+> Links used in all posts below:
+> - Chrome Web Store: `https://chromewebstore.google.com/detail/jpbekmkggadbfacnnlnkjhdkgaoonapn`
+> - Landing page: `https://ds009.github.io/side-link-preview/`
+> - GitHub repo: `https://github.com/ds009/side-link-preview`
 
 ---
 
@@ -15,7 +15,7 @@ already trimmed to the platform's character / style limits.
 **Title (≤ 80 chars):**
 
 ```
-Show HN: Side Link Preview – split-view reading in Chrome's Side Panel
+Show HN: Side Link Preview – read links beside your page, no tab switching
 ```
 
 **Body (first comment by you):**
@@ -23,16 +23,17 @@ Show HN: Side Link Preview – split-view reading in Chrome's Side Panel
 ```
 Hi HN — author here.
 
-I wanted a split-view reading workflow without switching browsers, so I
-shipped an extension that routes qualifying outgoing links (same-tab and
-new-tab by default) into Chrome's native Side Panel. Read on the left,
-follow links on the right — no tab explosion.
+I built this because deep reading kept turning into tab ping-pong: click a
+link, lose your place, hunt the right tab, repeat. Side Link Preview routes
+qualifying outgoing links into Chrome's native Side Panel instead — your
+original page stays on the left, the linked page loads on the right. Read
+faster, follow references without breaking flow, and skip the tab explosion.
 
 Highlights in v1.1:
 
 - Mini browser in the panel: Back/Forward/Refresh, Open in main tab, per-site zoom
 - Left click OR middle click to open; optional hover preview (independent)
-- Modifier keys (⌘/Ctrl/Shift/Alt) still open a real new tab
+- Modifier keys (⌘/Ctrl/Shift/Alt) still open a real new tab when you need one
 - Smart filtering + 125+ sensitive hosts excluded (auth, banking, webmail,
   streaming, IP addresses, gov TLDs, checkout paths…)
 - Per-site blacklist/whitelist with path-prefix rules
@@ -41,9 +42,9 @@ Highlights in v1.1:
 - 9 UI languages, follows browser on first install, auto light/dark
 - No analytics, no telemetry, MIT-licensed
 
-Code: {{REPO_URL}}
-Install: {{CWS_URL}}
-Site: {{LANDING_URL}}
+Code: https://github.com/ds009/side-link-preview
+Install: https://chromewebstore.google.com/detail/jpbekmkggadbfacnnlnkjhdkgaoonapn
+Site: https://ds009.github.io/side-link-preview/
 ```
 
 ---
@@ -53,25 +54,29 @@ Site: {{LANDING_URL}}
 **Title:**
 
 ```
-[Free + open source] Side Link Preview – split-view reading in Chrome's Side Panel
+[Free + open source] Stop tab-switching while reading — links open in Chrome's Side Panel
 ```
 
 **Body:**
 
 ```
-Built this to make Chrome's Side Panel feel like a real second pane.
+If you read docs, articles, or threads with lots of outbound links, you
+know the drill: new tab → read → back → lose context → repeat. This
+extension turns Chrome's Side Panel into a second pane so you can skim
+linked pages without leaving the one you're on.
 
 What's in v1.1:
-- Qualifying links open in the Side Panel (left/middle click or hover)
+- Qualifying links open beside your current page (left/middle click or hover)
 - Mini browser: address bar, back/forward/refresh, zoom, open in main tab
+- Fewer tabs, less switching — follow link chains in the panel
 - Blacklist/whitelist with path-prefix + wildcards
 - 125+ sensitive sites excluded by default (banking, webmail, streaming, IP…)
 - One-click "don't use side panel on this site" on the toolbar
 - Alt+Shift+P, right-click menu, modifier-key bypass
 - 9 languages, no tracking, MIT-licensed
 
-Source: {{REPO_URL}}
-Install: {{CWS_URL}}
+Source: https://github.com/ds009/side-link-preview
+Install: https://chromewebstore.google.com/detail/jpbekmkggadbfacnnlnkjhdkgaoonapn
 ```
 
 ---
@@ -79,17 +84,20 @@ Install: {{CWS_URL}}
 ## Reddit — r/productivity
 
 ```
-Title: Chrome extension for side-by-side reading — links open in the Side Panel
+Title: Read faster in Chrome — open links in the Side Panel instead of new tabs
 
-I've been doing all my reading with the Side Panel open on the right and I
-genuinely can't go back. Click a link → it loads beside the article you
-were reading. Left or middle click, optional hover preview, modifier keys
-still give you a normal new tab when you want one.
+My biggest reading friction was constant tab switching: click a reference,
+read it, hunt back to the original tab, forget where I was. Side Link
+Preview fixes that — qualifying links load in Chrome's Side Panel on the
+right while your page stays put on the left. Side-by-side reading, no
+context switch, way fewer tabs open at once.
 
-Free, open-source, no analytics:
-{{CWS_URL}}
+Left or middle click, optional hover preview, modifier keys still give you
+a normal new tab when you want one. Free, open-source, no analytics:
 
-Source: {{REPO_URL}}
+https://chromewebstore.google.com/detail/jpbekmkggadbfacnnlnkjhdkgaoonapn
+
+Source: https://github.com/ds009/side-link-preview
 ```
 
 ---
@@ -99,27 +107,29 @@ Source: {{REPO_URL}}
 **Tagline (≤ 60 chars):**
 
 ```
-Split-view reading in Chrome's Side Panel — no new tabs.
+Read links beside your page — fewer tabs, less switching.
 ```
 
 **Description (≤ 260 chars):**
 
 ```
-Side Link Preview opens qualifying links in Chrome's Side Panel — keep
-your tab on the left, read the linked page on the right. Left/middle click
-or hover, per-site rules, 9 languages, 125+ sensitive sites excluded.
-Free, open-source, no tracking.
+Stop tab ping-pong while reading. Side Link Preview opens qualifying links
+in Chrome's Side Panel — keep your article on the left, skim references on
+the right. Faster browsing, less context switching. Free, open-source, no
+tracking.
 ```
 
 **Maker comment:**
 
 ```
-Hey PH — built this because tab explosions while reading docs got out of
-hand. v1.1 adds middle-click mode, independent hover preview, embed
-diagnostics, per-site zoom, and a much larger sensitive-site blocklist
-(banking, webmail, streaming, IP addresses, gov domains…).
+Hey PH — I built this after one too many afternoons lost to tab switching
+while reading docs and articles. v1.1 adds middle-click mode, independent
+hover preview, embed diagnostics, per-site zoom, and a much larger
+sensitive-site blocklist (banking, webmail, streaming, IP addresses, gov
+domains…).
 
-Feedback welcome — especially sites that break inside the panel.
+The goal is simple: follow links without leaving your place. Feedback
+welcome — especially sites that break inside the panel.
 ```
 
 ---
@@ -128,36 +138,37 @@ Feedback welcome — especially sites that break inside the panel.
 
 **1/**
 ```
-Built a free Chrome extension I now can't live without:
+Tired of tab ping-pong while reading?
 
-qualifying links open in Chrome's Side Panel — read on the left, follow
-links on the right. Split-view on stock Chrome.
+Side Link Preview opens links in Chrome's Side Panel — your page stays on
+the left, the link loads on the right. Read faster, switch tabs less.
 
-{{CWS_URL}}
+Free & open source:
+https://chromewebstore.google.com/detail/jpbekmkggadbfacnnlnkjhdkgaoonapn
 ```
 
 **2/**
 ```
-v1.1 highlights:
+How it saves time:
+• Click a link → preview beside you, not in a new tab
+• Follow link chains in the panel without losing your place
 • Left OR middle click (+ optional hover preview)
 • Mini browser: back/forward/refresh, zoom, open in main tab
-• One-click "don't use side panel on this site"
-• Per-site blacklist/whitelist + path rules
 ```
 
 **3/**
 ```
-Safety by default:
-• 125+ sensitive hosts excluded (auth, banking, webmail, streaming…)
-• IP addresses & checkout paths stay native
-• No analytics, no tracking, 9 languages
-• MIT-licensed, settings stay in Chrome sync only
+Still in control:
+• ⌘/Ctrl/Shift/Alt + click → normal new tab when you want it
+• One-click "don't use side panel on this site"
+• 125+ sensitive sites excluded by default
+• No analytics, 9 languages, MIT-licensed
 ```
 
 **4/**
 ```
 Source on GitHub:
-{{REPO_URL}}
+https://github.com/ds009/side-link-preview
 
 Issues welcome — especially "this site breaks in the panel" reports.
 ```
@@ -167,13 +178,18 @@ Issues welcome — especially "this site breaks in the panel" reports.
 ## LinkedIn (single post)
 
 ```
-I shipped Side Link Preview — a free Chrome extension that opens qualifying
-links in Chrome's native Side Panel for side-by-side reading.
+I shipped Side Link Preview — a free Chrome extension that cuts tab
+switching while you read.
+
+Click a link and it opens in Chrome's Side Panel beside your current page
+instead of spawning another tab. Your article stays visible on the left;
+references load on the right. Less context switching, fewer tabs, faster
+browsing through docs, articles, and link-heavy pages.
 
 v1.1: left/middle click or hover preview, mini browser in the panel,
-per-site zoom, embed diagnostics, 125+ sensitive sites excluded by default,
-9 languages, no tracking.
+per-site zoom, 125+ sensitive sites excluded by default, 9 languages, no
+tracking.
 
-Install: {{CWS_URL}}
-Source: {{REPO_URL}}
+Install: https://chromewebstore.google.com/detail/jpbekmkggadbfacnnlnkjhdkgaoonapn
+Source: https://github.com/ds009/side-link-preview
 ```

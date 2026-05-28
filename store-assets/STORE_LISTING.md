@@ -21,6 +21,28 @@ Developer Dashboard on submission day.
 > `https://github.com/ds009/side-link-preview/blob/main/PRIVACY.md`.
 > Once Pages is live, paste the HTML one — reviewers prefer rendered HTML.
 
+### Account: Non-Trader (recommended)
+
+This extension is **free**, **MIT-licensed**, and has **no in-store
+purchases**. Voluntary GitHub Sponsors are outside the Chrome Web Store
+and do not require Trader status.
+
+In the [Developer Dashboard](https://chrome.google.com/webstore/devconsole),
+open **Account** (account-level settings, not an individual extension) →
+*Trader/non-trader disclosure* → choose **Non-trader** → save.
+
+| Status | What users see on your listing |
+| --- | --- |
+| **Non-trader** | No legal name / home address / phone block at the bottom |
+| **Trader** | EU DSA requires public legal name, address, email, and phone |
+
+You must self-declare accurately. Google does not decide for you. If you
+later sell paid features or act as a business on the store, switch to
+Trader and use a business address and SMS-capable phone you are willing
+to publish.
+
+Policy: [Trader verification FAQ](https://developer.chrome.com/docs/webstore/program-policies/trader-verification-faq)
+
 ---
 
 ## 2. Short description (max 132 chars)

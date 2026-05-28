@@ -10,7 +10,8 @@ repo and just need a quick re-verification before you ship.
 > 2. Make the GitHub repo **Public** and turn on **Pages → main /docs**.
 > 3. `npm run zip` and load-unpacked once for a smoke test.
 > 4. Fill in the dashboard form (privacy URL, justifications, data answers — all already drafted in `STORE_LISTING.md`).
-> 5. Tag `v1.1.0` to ship the GitHub Release.
+> 5. Account → declare **Non-Trader** (no public address/phone on the listing).
+> 6. Tag `v1.1.0` to ship the GitHub Release.
 >
 > Everything below is the long form.
 
@@ -124,6 +125,18 @@ that file already has every field drafted.
       (one-time **$5** registration fee paid).
 - [ ] **[manual]** Two-step verification on the developer Google account.
 - [ ] **[manual]** Account verified (Google may ask for email confirmation).
+- [ ] **[manual]** Trader status → **Non-Trader** (see `STORE_LISTING.md` § *Account: Non-Trader*).
+
+      **If you were already verified as a Trader** and your address/phone
+      appear on the listing: Developer Dashboard → **Account** (gear /
+      account menu, not a single extension) → *Trader/non-trader
+      disclosure* → select **Non-trader** → save. Public contact info
+      should drop off the store page after Google processes the change
+      (often within a few days). You do **not** need to delete the
+      extension or re-upload the zip.
+
+      **If the dashboard still shows Trader verification in progress**,
+      cancel or complete that flow first, then switch to Non-Trader.
 
 ## 6. Replace the placeholder extension ID
 
