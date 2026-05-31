@@ -6,7 +6,7 @@
 //   npm run screenshots -- --locale=zh      # render UI in zh
 //
 // What gets produced under store-assets/:
-//   screenshot-1.png  Hero · Wikipedia (left) ↔ MDN inside Side Panel (right)
+//   screenshot-1.png  Hero · Wikipedia + Side Panel (full toolbar) with MDN
 //   screenshot-2.png  Side-Panel toolbar with populated history
 //   screenshot-3.png  Options page, blacklist mode + sample domains
 //   screenshot-4.png  Modifier-key bypass overlay
@@ -33,9 +33,12 @@ const OUT = path.join(ROOT, 'store-assets');
 const WIDTH = 1280;
 const HEIGHT = 800;
 const CAPTION_HEIGHT = 96;
-const PANEL_WIDTH = 460;
-const LEFT_WIDTH = WIDTH - PANEL_WIDTH;
 const BODY_HEIGHT = HEIGHT - CAPTION_HEIGHT;
+// Hero (#1) and toolbar (#2) split ratios — wide enough for the full side-panel bar.
+const HERO_PANEL_WIDTH = 680;
+const HERO_LEFT_WIDTH = WIDTH - HERO_PANEL_WIDTH;
+const TOOLBAR_PANEL_WIDTH = 720;
+const TOOLBAR_LEFT_WIDTH = WIDTH - TOOLBAR_PANEL_WIDTH;
 
 const ACCENT = '#2563eb';
 const ACCENT_DARK = '#1e40af';
@@ -193,7 +196,7 @@ const shootOptionsBlacklist = async (browser, extensionId) => {
     mode: 'blacklist',
     blacklist: ['*.youtube.com', 'twitter.com', '*.docs.google.com', 'mail.example.com'],
     whitelist: [],
-    linkScope: 'blank-only',
+    linkScope: 'all',
     locale: LOCALE,
   });
   const page = await newPage(browser, { height: BODY_HEIGHT });
@@ -218,7 +221,7 @@ const shootOptionsDark = async (browser, extensionId) => {
     mode: 'blacklist',
     blacklist: ['*.youtube.com', 'twitter.com'],
     whitelist: [],
-    linkScope: 'blank-only',
+    linkScope: 'all',
     locale: 'zh',
   });
   const page = await newPage(browser, { height: BODY_HEIGHT, dark: true });
@@ -229,7 +232,7 @@ const shootOptionsDark = async (browser, extensionId) => {
   const body = await page.screenshot({ type: 'png' });
   await page.close();
   await writePng(
-    await withCaption(body, 'Auto light + dark · 6 languages · No tracking', {
+    await withCaption(body, 'Auto light + dark · 9 languages · No tracking', {
       dark: true,
     }),
     'screenshot-5.png',
@@ -259,28 +262,92 @@ const navigateSidePanel = async (page, url) => {
   await sleep(2000);
 };
 
+// Overlay that draws the eye to the side-panel toolbar: soft tint on the left
+// pane, a blue ring around `.bar`, and one evenly-spaced callout strip below.
+const toolbarHighlightOverlay = (panelLeft, panelW, layout) => {
+  const bar = layout?.bar;
+  if (!bar) return null;
+
+  const barY = bar.y;
+  const barH = bar.h;
+  const stripH = 32;
+  const stripGap = 10;
+  const stripY = barY + barH + stripGap;
+  const stripX = panelLeft + 10;
+  const stripW = panelW - 20;
+  const stripText = '← Back   ·   → Forward   ·   ↻ Refresh   ·   ← Main tab   ·   − / + Zoom';
+
+  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${BODY_HEIGHT}">
+    <defs>
+      <filter id="pillShadow" x="-20%" y="-30%" width="140%" height="160%">
+        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1e3a8a" flood-opacity="0.18"/>
+      </filter>
+    </defs>
+    <!-- Dim the companion page so the panel toolbar pops -->
+    <rect x="0" y="0" width="${panelLeft}" height="${BODY_HEIGHT}" fill="rgba(15,23,42,0.10)"/>
+    <!-- Slightly dim panel content below the callouts -->
+    <rect x="${panelLeft}" y="${stripY + stripH + 8}" width="${panelW}"
+          height="${BODY_HEIGHT - stripY - stripH - 8}" fill="rgba(15,23,42,0.06)"/>
+    <!-- Toolbar highlight band -->
+    <rect x="${panelLeft}" y="${barY}" width="${panelW}" height="${barH}"
+          fill="rgba(37,99,235,0.10)" stroke="#2563eb" stroke-width="2.5"/>
+    <!-- Single callout strip — avoids per-button pill overlap -->
+    <rect x="${stripX}" y="${stripY}" width="${stripW}" height="${stripH}" rx="${stripH / 2}"
+          fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="url(#pillShadow)"/>
+    <text x="${stripX + stripW / 2}" y="${stripY + stripH / 2 + 5}" text-anchor="middle"
+          font-family="-apple-system,BlinkMacSystemFont,sans-serif"
+          font-size="13" font-weight="600" fill="#1e40af">${xml(stripText)}</text>
+  </svg>`);
+};
+
+const measureToolbarLayout = async (page) =>
+  page.evaluate(() => {
+    const rect = (id) => {
+      const el = document.getElementById(id);
+      if (!el || el.hidden) return null;
+      const style = getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden') return null;
+      const b = el.getBoundingClientRect();
+      if (b.width < 1 || b.height < 1) return null;
+      return { x: b.x, y: b.y, w: b.width, h: b.height };
+    };
+    const barEl = document.querySelector('.bar');
+    const bar = barEl?.getBoundingClientRect();
+    return {
+      bar: bar ? { x: bar.x, y: bar.y, w: bar.width, h: bar.height } : null,
+      back: rect('back'),
+      forward: rect('forward'),
+      refresh: rect('refresh'),
+      openInMain: rect('open-in-main'),
+      zoomOut: rect('zoom-out'),
+      zoomIn: rect('zoom-in'),
+    };
+  });
+
 // Screenshot 2 — Side Panel toolbar with populated history. Composed as a
 // split view (companion article on the left, panel on the right) so the
 // toolbar lives in real browser context and the embedded page renders at a
 // readable width — not a thin strip floating in white.
+//
+// Deliberately different from #1 (Wikipedia + MDN): left = HN link feed,
+// panel = blog-style pages with two-entry history so Back is highlighted.
 const shootSidePanelToolbar = async (browser, extensionId) => {
   log('#2 side panel · toolbar with history');
   await seedSettings(browser, extensionId, {
     mode: 'blacklist',
     blacklist: [],
     whitelist: [],
-    linkScope: 'blank-only',
+    linkScope: 'all',
     locale: LOCALE,
   });
 
-  // Wider panel than the hero so toolbar + content both read large.
-  const panelW = 720;
-  const leftW = WIDTH - panelW;
+  // Wider panel so the full mini-browser toolbar (nav, address, zoom) stays visible.
+  const panelW = TOOLBAR_PANEL_WIDTH;
+  const leftW = TOOLBAR_LEFT_WIDTH;
 
-  // Left companion: a real Wikipedia article — different from #1 ("HTML")
-  // so the deck doesn't repeat itself.
+  // Left companion: Hacker News — visually distinct from #1's Wikipedia.
   const leftPage = await newPage(browser, { width: leftW, height: BODY_HEIGHT });
-  await leftPage.goto('https://en.wikipedia.org/wiki/Web_browser', {
+  await leftPage.goto('https://news.ycombinator.com/', {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
   });
@@ -289,23 +356,32 @@ const shootSidePanelToolbar = async (browser, extensionId) => {
   await leftPage.close();
 
   // Right pane: side panel with two-entry history so Back is active.
+  // Plain blog / FAQ pages — not MDN or Wikipedia.
   const page = await newPage(browser, { width: panelW, height: BODY_HEIGHT });
   await page.goto(
     `chrome-extension://${extensionId}/sidepanel.html?tabId=99999`,
     { waitUntil: 'domcontentloaded' },
   );
   await sleep(500);
-  await navigateSidePanel(page, 'https://en.wikipedia.org/wiki/Hyperlink');
-  await navigateSidePanel(
-    page,
-    'https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe',
-  );
-  // Hover the back button so it picks up its hover highlight.
+  await navigateSidePanel(page, 'https://www.paulgraham.com/ds.html');
+  await navigateSidePanel(page, 'https://news.ycombinator.com/newsfaq.html');
+  // Blur address bar so every toolbar control stays visible.
+  await page.evaluate(() => {
+    document.getElementById('addr')?.blur();
+    document.querySelector('.bar')?.classList.remove('editing');
+  });
+  // Hover back (active — history populated) and refresh for hover highlights.
   const back = await page.$('#back');
   if (back) await back.hover();
-  await sleep(200);
+  await sleep(120);
+  const refresh = await page.$('#refresh');
+  if (refresh) await refresh.hover();
+  await sleep(120);
+  const layout = await measureToolbarLayout(page);
   const panelShot = await page.screenshot({ type: 'png' });
   await page.close();
+
+  const highlight = toolbarHighlightOverlay(leftW, panelW, layout);
 
   const body = await sharp({
     create: {
@@ -318,7 +394,6 @@ const shootSidePanelToolbar = async (browser, extensionId) => {
     .composite([
       { input: leftShot, top: 0, left: 0 },
       { input: panelShot, top: 0, left: leftW },
-      // Subtle 2-pixel divider so the panel edge reads as "side panel".
       {
         input: Buffer.from(
           `<svg xmlns="http://www.w3.org/2000/svg" width="2" height="${BODY_HEIGHT}"><rect width="2" height="${BODY_HEIGHT}" fill="#cbd5e1"/></svg>`,
@@ -326,32 +401,37 @@ const shootSidePanelToolbar = async (browser, extensionId) => {
         top: 0,
         left: leftW - 1,
       },
+      ...(highlight ? [{ input: highlight, top: 0, left: 0 }] : []),
     ])
     .png()
     .toBuffer();
 
   await writePng(
-    await withCaption(body, 'Mini browser inside the panel · Back · Forward · Refresh'),
+    await withCaption(
+      body,
+      'Mini browser toolbar · Back · Forward · Refresh · Zoom · Open in main tab',
+    ),
     'screenshot-2.png',
   );
 };
 
-// Screenshot 1 — Hero. Wikipedia full-width on the left, sidepanel.html
-// (with MDN loaded inside) on the right, composited side-by-side.
+// Screenshot 1 — Hero. Wikipedia on the left, sidepanel.html (full toolbar +
+// MDN inside the iframe) on the right, composited side-by-side.
 const shootHero = async (browser, extensionId) => {
-  log('#1 hero · split view');
+  log('#1 hero · split view with full panel toolbar');
   await seedSettings(browser, extensionId, {
     mode: 'blacklist',
     blacklist: [],
     whitelist: [],
-    linkScope: 'blank-only',
+    linkScope: 'all',
     locale: LOCALE,
   });
 
-  // Left pane: Wikipedia, rendered at LEFT_WIDTH so we get the right reflow.
-  // "HTML" is on-topic with the right-pane MDN <iframe> doc and is a real
-  // article (avoid redirect/no-article pages).
-  const leftPage = await newPage(browser, { width: LEFT_WIDTH, height: BODY_HEIGHT });
+  const panelW = HERO_PANEL_WIDTH;
+  const leftW = HERO_LEFT_WIDTH;
+
+  // Left pane: Wikipedia, rendered at leftW so we get the right reflow.
+  const leftPage = await newPage(browser, { width: leftW, height: BODY_HEIGHT });
   await leftPage.goto('https://en.wikipedia.org/wiki/HTML', {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
@@ -360,17 +440,23 @@ const shootHero = async (browser, extensionId) => {
   const leftShot = await leftPage.screenshot({ type: 'png' });
   await leftPage.close();
 
-  // Right pane: Side Panel UI loading MDN.
-  const rightPage = await newPage(browser, { width: PANEL_WIDTH, height: BODY_HEIGHT });
+  // Right pane: Side Panel UI with full toolbar + MDN loaded inside iframe.
+  const rightPage = await newPage(browser, { width: panelW, height: BODY_HEIGHT });
   await rightPage.goto(
     `chrome-extension://${extensionId}/sidepanel.html?tabId=88888`,
     { waitUntil: 'domcontentloaded' },
   );
-  await sleep(300);
+  await sleep(500);
   await navigateSidePanel(
     rightPage,
     'https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe',
   );
+  // Blur address bar so editing mode doesn't hide nav / zoom buttons.
+  await rightPage.evaluate(() => {
+    document.getElementById('addr')?.blur();
+    document.querySelector('.bar')?.classList.remove('editing');
+  });
+  await sleep(200);
   const rightShot = await rightPage.screenshot({ type: 'png' });
   await rightPage.close();
 
@@ -384,21 +470,20 @@ const shootHero = async (browser, extensionId) => {
   })
     .composite([
       { input: leftShot, top: 0, left: 0 },
-      { input: rightShot, top: 0, left: LEFT_WIDTH },
-      // Subtle 2-pixel divider so the split is visually distinct.
+      { input: rightShot, top: 0, left: leftW },
       {
         input: Buffer.from(
           `<svg xmlns="http://www.w3.org/2000/svg" width="2" height="${BODY_HEIGHT}"><rect width="2" height="${BODY_HEIGHT}" fill="#cbd5e1"/></svg>`,
         ),
         top: 0,
-        left: LEFT_WIDTH - 1,
+        left: leftW - 1,
       },
     ])
     .png()
     .toBuffer();
 
   await writePng(
-    await withCaption(body, 'Click any link → opens side-by-side, in stock Chrome'),
+    await withCaption(body, 'Read links beside your page — fewer tabs, less switching'),
     'screenshot-1.png',
   );
 };
