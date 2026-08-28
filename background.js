@@ -174,7 +174,40 @@ ensureContextMenu();
 
 const isHttpUrl = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
 
+const SYSTEM_URL_RE =
+  /^(chrome|chrome-extension|chrome-search|chrome-untrusted|edge|devtools|view-source|about):/i;
+
+const isSystemUrl = (url) => !url || SYSTEM_URL_RE.test(url);
+
+/** System / non-http / sensitive URLs — not Scope (explicit opens may bypass Scope). */
+const isSidePanelApiBlocked = (url) => {
+  if (isSystemUrl(url)) return true;
+  if (!isHttpUrl(url)) return true;
+  if (isSensitivePreviewUrl(url)) return true;
+  return false;
+};
+
+/** Preconfigure tab path + enabled so open() can run synchronously on user gesture. */
+const preconfigureSidePanelTab = (tabId, url) => {
+  if (!tabId) return;
+  if (isSidePanelApiBlocked(url)) {
+    chrome.sidePanel.setOptions({ tabId, enabled: false }).catch(() => {});
+    return;
+  }
+  chrome.sidePanel
+    .setOptions({
+      tabId,
+      path: `sidepanel.html?tabId=${tabId}`,
+      enabled: true,
+    })
+    .catch(() => {});
+};
+
 const panelReadyKey = (tabId) => `sp_ready_${tabId}`;
+const scopeBypassKey = (tabId) => `sp_scope_bypass_${tabId}`;
+
+/** In-flight explicit opens (context menu / shortcut) — guards against tab-event races. */
+const explicitOpenPending = new Set();
 
 const markTabPanelReady = (tabId) => {
   if (!tabId) return;
@@ -183,37 +216,49 @@ const markTabPanelReady = (tabId) => {
     .catch(() => {});
 };
 
+/** One-shot bypass of Scope disable (whitelist / blacklist) for explicit opens. */
+const markScopeBypass = (tabId) => {
+  if (!tabId) return;
+  chrome.storage.session.set({ [scopeBypassKey(tabId)]: true }).catch(() => {});
+};
+
 // Push a concrete URL into the current tab's Side Panel. Mirrors the open
 // logic used in the onMessage branch below.
-const openUrlInSidePanel = async (url, tab) => {
+const openUrlInSidePanel = (url, tab) => {
   if (!isHttpUrl(url) || !tab?.id || !tab?.windowId) return;
   // Auth / SSO / payment / E2E-messaging destinations are unsafe to embed
   // even when the user explicitly chose "Open link in Side Panel" or
   // pressed the keyboard shortcut. Fall back to a real new tab.
   if (isSensitivePreviewUrl(url)) {
-    try {
-      await chrome.tabs.create({ url, active: true });
-    } catch (err) {
+    chrome.tabs.create({ url, active: true }).catch((err) => {
       console.warn('[SideLinkPreview] sensitive-url fallback:', err);
-    }
+    });
     return;
   }
   const tabId = tab.id;
   const windowId = tab.windowId;
-  try {
-    await chrome.storage.session.set({ [`sp_url_${tabId}`]: url });
-    markTabPanelReady(tabId);
-    await chrome.sidePanel.setOptions({
-      tabId,
-      path: `sidepanel.html?tabId=${tabId}`,
-      enabled: true,
+  explicitOpenPending.add(tabId);
+
+  // open() must be the first Side Panel API call in the gesture stack.
+  // setOptions is preconfigured on tab events and on contextmenu (content.js).
+  chrome.sidePanel
+    .open({ tabId, windowId })
+    .catch((err) =>
+      console.warn('[SideLinkPreview] openUrlInSidePanel:', err),
+    )
+    .finally(() => {
+      setTimeout(() => explicitOpenPending.delete(tabId), 800);
     });
-    // Note: this path runs inside a user gesture (keyboard shortcut or
-    // context-menu click), so sidePanel.open() will actually succeed.
-    await chrome.sidePanel.open({ tabId, windowId });
-  } catch (err) {
-    console.warn('[SideLinkPreview] openUrlInSidePanel:', err);
-  }
+
+  chrome.storage.session
+    .set({
+      [`sp_url_${tabId}`]: url,
+      [panelReadyKey(tabId)]: true,
+      [scopeBypassKey(tabId)]: true,
+    })
+    .catch((err) => console.warn('[SideLinkPreview] storage.set:', err));
+
+  preconfigureSidePanelTab(tabId, tab.url || tab.pendingUrl || url);
 };
 
 chrome.contextMenus?.onClicked.addListener((info, tab) => {
@@ -256,7 +301,7 @@ chrome.commands?.onCommand.addListener(async (command) => {
 // older Chrome versions, under enterprise policy, or when the toolbar icon is
 // hidden. Add an explicit onClicked handler to force-open the Side Panel when
 // the toolbar icon is clicked.
-chrome.action?.onClicked.addListener(async (tab) => {
+chrome.action?.onClicked.addListener((tab) => {
   if (!tab?.id || !tab?.windowId) return;
   // Side-panel iframe cannot embed chrome://, chrome-extension://,
   // devtools://, view-source:, about: etc. — opening the panel on those
@@ -267,19 +312,21 @@ chrome.action?.onClicked.addListener(async (tab) => {
   const url = tab.url || tab.pendingUrl;
   if (isSystemUrl(url) || isSensitivePreviewUrl(url)) return;
   try {
-    // Re-enable in case our blacklist auto-disable closed the panel for this
-    // tab. Toolbar click is an explicit user gesture, so honor it even on
-    // user-disabled hosts (but never on system pages — see above).
-    await chrome.sidePanel.setOptions({
-      tabId: tab.id,
-      path: `sidepanel.html?tabId=${tab.id}`,
-      enabled: true,
-    });
+    explicitOpenPending.add(tab.id);
     if (isHttpUrl(url)) {
-      await chrome.storage.session.set({ [`sp_url_${tab.id}`]: url });
+      chrome.storage.session
+        .set({ [`sp_url_${tab.id}`]: url })
+        .catch(() => {});
     }
     markTabPanelReady(tab.id);
-    await chrome.sidePanel.open({ tabId: tab.id, windowId: tab.windowId });
+    markScopeBypass(tab.id);
+    preconfigureSidePanelTab(tab.id, url);
+    chrome.sidePanel
+      .open({ tabId: tab.id, windowId: tab.windowId })
+      .catch((err) => console.warn('[SideLinkPreview] action.onClicked open:', err))
+      .finally(() => {
+        setTimeout(() => explicitOpenPending.delete(tab.id), 800);
+      });
   } catch (err) {
     console.warn('[SideLinkPreview] action.onClicked:', err);
   }
@@ -358,6 +405,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  if (msg?.type === 'PREPARE_SIDE_PANEL') {
+    const tabId = sender.tab?.id;
+    const url = sender.tab?.url || sender.tab?.pendingUrl;
+    if (tabId) preconfigureSidePanelTab(tabId, url);
+    sendResponse({ ok: true });
+    return;
+  }
+
   if (msg?.type !== 'OPEN_IN_SIDE_PANEL') return;
 
   // Only http(s) URLs are previewable in the iframe. content.js already
@@ -400,21 +455,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   markTabPanelReady(tabId);
-
-  // Critical: do NOT await. chrome.sidePanel.open() must be called inside the
-  // synchronous onMessage call stack, otherwise Chrome considers the user
-  // gesture expired and silently drops the call.
-  chrome.storage.session
-    .set({ [`sp_url_${tabId}`]: msg.url })
-    .catch((err) => console.warn('[SideLinkPreview] storage.set:', err));
-
-  chrome.sidePanel
-    .setOptions({
-      tabId,
-      path: `sidepanel.html?tabId=${tabId}`,
-      enabled: true,
-    })
-    .catch((err) => console.warn('[SideLinkPreview] setOptions:', err));
+  explicitOpenPending.add(tabId);
 
   chrome.sidePanel
     .open({ tabId, windowId })
@@ -422,27 +463,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     .catch((err) => {
       console.warn('[SideLinkPreview] open failed:', err);
       sendResponse({ ok: false, reason: String(err) });
+    })
+    .finally(() => {
+      setTimeout(() => explicitOpenPending.delete(tabId), 800);
     });
+
+  chrome.storage.session
+    .set({ [`sp_url_${tabId}`]: msg.url })
+    .catch((err) => console.warn('[SideLinkPreview] storage.set:', err));
+
+  preconfigureSidePanelTab(tabId, sender.tab?.url || msg.url);
 
   return true;
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+  explicitOpenPending.delete(tabId);
   chrome.storage.session
-    .remove([`sp_url_${tabId}`, panelReadyKey(tabId)])
+    .remove([`sp_url_${tabId}`, panelReadyKey(tabId), scopeBypassKey(tabId)])
     .catch(() => {});
 });
-
-// ---------- Auto-disable Side Panel on system + user-disabled hosts ----------
-// Hide this extension's Side Panel on:
-//   1. chrome://, chrome-extension://, devtools://, view-source:, about:
-//      and similar internal pages
-//   2. Any URL the user has disabled via Scope settings (in blacklist mode:
-//      URLs in the list; in whitelist mode: URLs NOT in the list).
-const SYSTEM_URL_RE =
-  /^(chrome|chrome-extension|chrome-search|chrome-untrusted|edge|devtools|view-source|about):/i;
-
-const isSystemUrl = (url) => !url || SYSTEM_URL_RE.test(url);
 
 // Tiny in-memory cache to avoid hitting storage on every tab event. The
 // service worker can be torn down at any time, in which case the cache
@@ -482,37 +522,44 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 getSettings();
 
-const isUrlPanelDisabled = async (url) => {
-  if (isSystemUrl(url)) return true;
-  if (!isHttpUrl(url)) return true;
-  if (isSensitivePreviewUrl(url)) return true;
-  const settings = await getSettings();
-  return isUrlDisabledByScope(url, settings);
-};
-
 const clearPreviewSession = (tabId) => {
   if (!tabId) return;
   chrome.storage.session
-    .remove([`sp_url_${tabId}`, panelReadyKey(tabId)])
+    .remove([
+      `sp_url_${tabId}`,
+      panelReadyKey(tabId),
+      scopeBypassKey(tabId),
+    ])
     .catch(() => {});
 };
 
-const requestSidePanelClose = (tabId) => {
+const requestSidePanelClose = (tabId, { force = false } = {}) => {
   chrome.runtime
     .sendMessage({
       type: 'SLP_REQUEST_SIDE_PANEL_CLOSE',
-      tabId,
+      tabId: force ? undefined : tabId,
+      force: !!force,
     })
     .catch(() => {});
+};
+
+/** New tabs never inherit a Side Panel preview from other tabs. */
+const initSidePanelForNewTab = (tab) => {
+  if (!tab?.id) return;
+  clearPreviewSession(tab.id);
+  preconfigureSidePanelTab(tab.id, tab.url || tab.pendingUrl);
+  if (tab.active) requestSidePanelClose(tab.id, { force: true });
 };
 
 /** Close panel when the session preview URL matches Scope disable rules. */
 const closePanelIfPreviewScopeDisabled = async (tabId) => {
   if (!tabId) return;
   try {
-    const key = `sp_url_${tabId}`;
-    const data = await chrome.storage.session.get(key);
-    const previewUrl = data[key];
+    const urlKey = `sp_url_${tabId}`;
+    const bypassKey = scopeBypassKey(tabId);
+    const data = await chrome.storage.session.get([urlKey, bypassKey]);
+    if (data[bypassKey]) return;
+    const previewUrl = data[urlKey];
     if (!previewUrl || !isHttpUrl(previewUrl)) return;
     const settings = await getSettings();
     if (!isUrlDisabledByScope(previewUrl, settings)) return;
@@ -527,26 +574,52 @@ const refreshSidePanelForTab = async (
   { fromNavigation = false } = {},
 ) => {
   if (!tabId) return;
-  const disabled = await isUrlPanelDisabled(url);
-  try {
-    await chrome.sidePanel.setOptions({ tabId, enabled: !disabled });
-  } catch (err) {
-    console.warn('[SideLinkPreview] toggle panel:', err);
+  if (explicitOpenPending.has(tabId)) return;
+  if (fromNavigation) {
+    chrome.storage.session.remove(scopeBypassKey(tabId)).catch(() => {});
   }
+  let scopeBypass = false;
+  if (!fromNavigation) {
+    try {
+      const data = await chrome.storage.session.get(scopeBypassKey(tabId));
+      scopeBypass = !!data[scopeBypassKey(tabId)];
+    } catch (_) {}
+  }
+
+  preconfigureSidePanelTab(tabId, url);
+
+  let scopeDisabled = false;
+  if (!scopeBypass && !isSidePanelApiBlocked(url)) {
+    const settings = await getSettings();
+    scopeDisabled = isUrlDisabledByScope(url, settings);
+  }
+
   // Chrome has no sidePanel.close(). Ask the matching panel instance to
   // window.close() when:
   //   • the tab navigated (left page moved on — stale preview), or
-  //   • this URL should not use the Side Panel (system / auth / scope).
-  if (fromNavigation || disabled) {
+  //   • Scope disables automatic preview on this host (unless bypassed).
+  if (fromNavigation || scopeDisabled) {
     clearPreviewSession(tabId);
     requestSidePanelClose(tabId);
   }
 };
 
+chrome.tabs.onCreated.addListener((tab) => {
+  initSidePanelForNewTab(tab);
+});
+
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  if (explicitOpenPending.has(tabId)) return;
   try {
     const tab = await chrome.tabs.get(tabId);
-    refreshSidePanelForTab(tabId, tab.url || tab.pendingUrl);
+    await refreshSidePanelForTab(tabId, tab.url || tab.pendingUrl);
+    if (explicitOpenPending.has(tabId)) return;
+    const session = await chrome.storage.session.get([
+      `sp_url_${tabId}`,
+      scopeBypassKey(tabId),
+    ]);
+    if (session[`sp_url_${tabId}`] || session[scopeBypassKey(tabId)]) return;
+    requestSidePanelClose(tabId, { force: true });
   } catch (_) {}
 });
 

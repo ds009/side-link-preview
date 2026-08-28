@@ -2,6 +2,36 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.3.0] — 2026-08-28
+
+### Changed
+
+- **Side Panel API vs Scope** — Scope no longer sets `enabled: false` on tabs; it only controls automatic link interception. Explicit opens (context menu, shortcut, toolbar) work on scope-disabled hosts without fighting the Chrome Side Panel API.
+- **Context menu / link open** — preconfigure tab `path` + `enabled` on tab events and on `contextmenu`, then call `sidePanel.open()` synchronously (Chrome user-gesture requirement).
+
+### Fixed
+
+- **Context menu “Open link in Side Panel”** now works when the Side Panel was never opened on that tab (first-open gesture + preconfigure race).
+
+---
+
+## [1.2.0] — 2026-06-01
+
+### Added
+
+- **Quick whitelist** toolbar button — add the current preview site to the whitelist in one click (whitelist mode; same slot as quick blacklist).
+- **New tabs default to closed Side Panel** — creating or switching to a tab without an active preview no longer leaves the panel open.
+
+### Changed
+
+- **Context menu “Open link in Side Panel”** now bypasses Scope (whitelist/blacklist) as a one-shot explicit open, including on non-whitelisted hosts.
+
+### Fixed
+
+- **Context menu open** no longer fails silently in whitelist mode (race between `setOptions` / `open()` and tab-event handlers that immediately closed the panel).
+
+---
+
 ## [1.1.0] — 2026-05-25
 
 ### Added

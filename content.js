@@ -254,6 +254,19 @@
   let syncListenerInstalled = false;
   let sessionListenerInstalled = false;
   let interceptorsInstalled = false;
+  let contextMenuPrepInstalled = false;
+
+  const setupContextMenuPrep = () => {
+    if (contextMenuPrepInstalled || inSidePanel || !inTopFrame) return;
+    contextMenuPrepInstalled = true;
+    document.addEventListener(
+      'contextmenu',
+      () => {
+        safeSendMessage({ type: 'PREPARE_SIDE_PANEL' });
+      },
+      true,
+    );
+  };
 
   const attachSyncListener = () => {
     if (syncListenerInstalled) return;
@@ -281,6 +294,7 @@
     applySettings(raw);
     attachSyncListener();
     attachSessionListener();
+    setupContextMenuPrep();
     if (interceptorsNeeded()) setupInterceptors();
   };
 

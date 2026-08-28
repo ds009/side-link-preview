@@ -3,6 +3,12 @@ const tabId = Number(params.get('tabId')) || null;
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (!msg || msg.type !== 'SLP_REQUEST_SIDE_PANEL_CLOSE') return;
+  if (msg.force) {
+    try {
+      window.close();
+    } catch (_) {}
+    return;
+  }
   if (!tabId || msg.tabId !== tabId) return;
   try {
     window.close();
@@ -34,11 +40,13 @@ const zoomInBtn = document.getElementById('zoom-in');
 const zoomOutBtn = document.getElementById('zoom-out');
 const zoomLevelBtn = document.getElementById('zoom-level');
 const quickBlacklistBtn = document.getElementById('quick-blacklist');
+const quickWhitelistBtn = document.getElementById('quick-whitelist');
 
 const t = (key, fallback) =>
   window.SLP_I18N?.t?.(key, fallback) ?? (fallback ?? key);
 
 const urlAlreadyOnBlacklist = (url, list) => urlOnScopeList(url, list);
+const urlAlreadyOnWhitelist = (url, list) => urlOnScopeList(url, list);
 
 /** Append current preview URL to blacklist (only when Scope mode is blacklist). */
 const persistQuickBlacklist = async () => {
@@ -69,7 +77,37 @@ const persistQuickBlacklist = async () => {
   }
 };
 
+/** Append current preview URL host to whitelist (only when Scope mode is whitelist). */
+const persistQuickWhitelist = async () => {
+  if (!currentUrl || !/^https?:\/\//i.test(currentUrl))
+    return { ok: false, reason: 'bad-url' };
+  const entry = scopeEntryForUrl(currentUrl);
+  if (!entry) return { ok: false, reason: 'bad-url' };
+  let snap = {};
+  try {
+    snap = await chrome.storage.sync.get('slpSettings');
+  } catch (_) {
+    return { ok: false, reason: 'read' };
+  }
+
+  const prepared = prepareScopeListAppend(snap.slpSettings, {
+    entry,
+    listKind: 'whitelist',
+    checkUrl: currentUrl,
+  });
+  if (!prepared.ok) return prepared;
+  if (prepared.reason === 'already') return prepared;
+
+  try {
+    await chrome.storage.sync.set({ slpSettings: prepared.settings });
+    return { ok: true, reason: 'saved' };
+  } catch (_) {
+    return { ok: false, reason: 'write' };
+  }
+};
+
 let qbBusy = false;
+let qwBusy = false;
 
 const syncQuickBlacklistChrome = async () => {
   if (!quickBlacklistBtn) return;
@@ -121,6 +159,63 @@ const syncQuickBlacklistChrome = async () => {
     'aria-label',
     redundant ? doneTitle : addTitle,
   );
+};
+
+const syncQuickWhitelistChrome = async () => {
+  if (!quickWhitelistBtn) return;
+  let normalized;
+  try {
+    const bag = await chrome.storage.sync.get('slpSettings');
+    normalized = normalizeSlpSettings(bag.slpSettings);
+  } catch (_) {
+    quickWhitelistBtn.hidden = true;
+    return;
+  }
+
+  if (normalized.mode !== 'whitelist') {
+    quickWhitelistBtn.hidden = true;
+    return;
+  }
+
+  const url = currentUrl;
+  if (!url || !/^https?:\/\//i.test(url)) {
+    quickWhitelistBtn.hidden = true;
+    return;
+  }
+
+  let host = '';
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch (_) {
+    quickWhitelistBtn.hidden = true;
+    return;
+  }
+  if (!host) {
+    quickWhitelistBtn.hidden = true;
+    return;
+  }
+
+  quickWhitelistBtn.hidden = false;
+  const redundant = urlAlreadyOnWhitelist(url, normalized.whitelist);
+  quickWhitelistBtn.disabled = redundant;
+  const addTitle = t(
+    'btn_quick_whitelist_title',
+    'Add this site to whitelist',
+  );
+  const doneTitle = t(
+    'btn_quick_whitelist_already_title',
+    'This site is already on the whitelist',
+  );
+  quickWhitelistBtn.title = redundant ? doneTitle : addTitle;
+  quickWhitelistBtn.setAttribute(
+    'aria-label',
+    redundant ? doneTitle : addTitle,
+  );
+};
+
+const syncQuickScopeChrome = async () => {
+  await syncQuickBlacklistChrome();
+  await syncQuickWhitelistChrome();
 };
 
 const showLoader = () => loader?.classList.add('show');
@@ -499,7 +594,7 @@ const load = (url, { isRetry = false, fromHistory = false } = {}) => {
     if (myToken !== loadToken) return; // Superseded by a newer load().
     handleLoadFailure();
   }, BLOCK_TIMEOUT_MS);
-  void syncQuickBlacklistChrome();
+  void syncQuickScopeChrome();
 };
 
 // Auto-retry once before showing the blocked-page tip. Many failures clear
@@ -677,7 +772,7 @@ tipOpenBlacklistBtn?.addEventListener('click', async () => {
         'Added to blacklist — opened in new tab',
       );
       void syncTipBlacklistButton();
-      void syncQuickBlacklistChrome();
+      void syncQuickScopeChrome();
     } else {
       console.warn('[SideLinkPreview] tip blacklist:', res);
       void syncTipBlacklistButton();
@@ -750,19 +845,62 @@ quickBlacklistBtn?.addEventListener('click', async () => {
       console.warn('[SideLinkPreview] quick blacklist:', res);
       quickBlacklistBtn.title = msg;
       quickBlacklistBtn.setAttribute('aria-label', msg);
-      setTimeout(() => void syncQuickBlacklistChrome(), 2400);
+      setTimeout(() => void syncQuickScopeChrome(), 2400);
       return;
     }
 
     if (res.reason === 'saved') {
       quickBlacklistBtn.title = t('saved', 'Saved');
       quickBlacklistBtn.setAttribute('aria-label', t('saved', 'Saved'));
-      setTimeout(() => void syncQuickBlacklistChrome(), 900);
+      setTimeout(() => void syncQuickScopeChrome(), 900);
     } else {
-      void syncQuickBlacklistChrome();
+      void syncQuickScopeChrome();
     }
   } finally {
     qbBusy = false;
+  }
+});
+
+quickWhitelistBtn?.addEventListener('click', async () => {
+  if (
+    !quickWhitelistBtn ||
+    quickWhitelistBtn.hidden ||
+    quickWhitelistBtn.disabled ||
+    qwBusy
+  ) {
+    return;
+  }
+  qwBusy = true;
+  try {
+    const res = await persistQuickWhitelist();
+    if (!res.ok) {
+      let msg =
+        t(
+          'quick_whitelist_save_failed_prefix',
+          'Could not save whitelist: ',
+        ) + (res.reason || '');
+      if (res.reason === 'quota') {
+        msg = t(
+          'storage_quota_warning',
+          'Domain list is too long for Chrome sync storage. Please shorten it.',
+        );
+      }
+      console.warn('[SideLinkPreview] quick whitelist:', res);
+      quickWhitelistBtn.title = msg;
+      quickWhitelistBtn.setAttribute('aria-label', msg);
+      setTimeout(() => void syncQuickScopeChrome(), 2400);
+      return;
+    }
+
+    if (res.reason === 'saved') {
+      quickWhitelistBtn.title = t('saved', 'Saved');
+      quickWhitelistBtn.setAttribute('aria-label', t('saved', 'Saved'));
+      setTimeout(() => void syncQuickScopeChrome(), 900);
+    } else {
+      void syncQuickScopeChrome();
+    }
+  } finally {
+    qwBusy = false;
   }
 });
 
@@ -782,7 +920,7 @@ const readInitialUrl = async () => {
 
 updateRefreshButton();
 updateOpenInMainButton();
-void syncQuickBlacklistChrome();
+void syncQuickScopeChrome();
 
 readInitialUrl();
 
@@ -965,7 +1103,7 @@ chrome.storage.local
 // host, mirror it here so multi-window users don't see stale levels.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'sync' && changes.slpSettings) {
-    void syncQuickBlacklistChrome();
+    void syncQuickScopeChrome();
     if (tip.classList.contains('show')) void syncTipBlacklistButton();
   }
   if (area !== 'local') return;
