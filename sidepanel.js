@@ -1,18 +1,32 @@
 const params = new URLSearchParams(location.search);
-const tabId = Number(params.get('tabId')) || null;
+// Which tab this document is showing. Starts as the tab Chrome opened the
+// panel for, and follows the active tab when Chrome keeps a single visible
+// panel on screen.
+let boundTabId = Number(params.get('tabId')) || null;
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (!msg || msg.type !== 'SLP_REQUEST_SIDE_PANEL_CLOSE') return;
-  if (msg.force) {
+  if (!msg) return;
+  if (msg.type === 'SLP_REQUEST_SIDE_PANEL_CLOSE') {
+    if (msg.force) {
+      try {
+        window.close();
+      } catch (_) {}
+      return;
+    }
+    if (!boundTabId || msg.tabId !== boundTabId) return;
     try {
       window.close();
     } catch (_) {}
     return;
   }
-  if (!tabId || msg.tabId !== tabId) return;
-  try {
-    window.close();
-  } catch (_) {}
+  // The visible panel follows the active tab. A document already bound to
+  // that tab keeps its live state (storage may lag a debounced write).
+  if (msg.type === 'SLP_SHOW_TAB_VIEW') {
+    if (!msg.tabId || msg.tabId === boundTabId) return;
+    if (document.visibilityState === 'hidden') return;
+    flushView();
+    void showStoredTab(msg.tabId);
+  }
 });
 
 const bar = document.querySelector('.bar');
@@ -435,14 +449,16 @@ const runBlockedProbe = async (token) => {
 // so the focus quirks of side-panel WebContents and cross-origin iframes
 // don't apply: a button click delivers a real, deterministic event.
 //
-// Persisted per host in chrome.storage.local under `slpZoomMap`.
+// A tab that has never set its own zoom starts from the per-host map
+// (`slpZoomMap`). After that, the level is stored on the tab so two tabs
+// on the same site can stay at different zoom.
 const ZOOM_LEVELS = [
   0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3,
 ];
 const ZOOM_MAP_KEY = 'slpZoomMap';
 let zoomMap = {};
 let currentZoom = 1;
-let zoomPersistTimer = null;
+let tabZoom = null;
 
 const hostFromUrl = (url) => {
   try {
@@ -505,36 +521,27 @@ const hideZoomLabelSoon = () => {
   }, 250);
 };
 
-const persistZoomForHost = (host, factor) => {
-  if (!host) return;
-  if (Math.abs(factor - 1) < 0.001) {
-    delete zoomMap[host];
-  } else {
-    zoomMap[host] = factor;
-  }
-  // Debounce — rapid +/- clicks shouldn't spam storage writes.
-  clearTimeout(zoomPersistTimer);
-  zoomPersistTimer = setTimeout(() => {
-    chrome.storage.local
-      .set({ [ZOOM_MAP_KEY]: zoomMap })
-      .catch((err) => console.warn('[SideLinkPreview] zoom persist:', err));
-  }, 250);
-};
-
-const setZoom = (factor, { persist = true } = {}) => {
+const setZoom = (factor, { persist = true, flash = true } = {}) => {
   const f = Math.min(3, Math.max(0.5, Number(factor) || 1));
   currentZoom = f;
+  tabZoom = f;
   applyZoomTransform(f);
   updateZoomLabelText(f);
   // Explicit user action via toolbar → flash the badge.
-  flashZoomLabel();
-  if (persist) persistZoomForHost(hostFromUrl(currentUrl), f);
+  if (flash) flashZoomLabel();
+  if (persist) schedulePersistView();
 };
 
-const applyZoomForUrl = (url) => {
-  const host = hostFromUrl(url);
-  const saved = host && zoomMap[host];
-  const next = saved && Number.isFinite(saved) ? saved : 1;
+const applyZoomForUrl = (url, { flash = true } = {}) => {
+  let next = 1;
+  if (tabZoom != null) {
+    next = tabZoom;
+  } else {
+    const host = hostFromUrl(url);
+    const saved = host && zoomMap[host];
+    next = saved && Number.isFinite(saved) ? saved : 1;
+    tabZoom = next;
+  }
   const changed = Math.abs(currentZoom - next) >= 0.001;
   currentZoom = next;
   applyZoomTransform(next);
@@ -542,7 +549,142 @@ const applyZoomForUrl = (url) => {
   // Flash only when restoring a non-default level on a fresh navigation, so
   // the user is reminded that the page is rendered at a non-standard zoom.
   // Default 100% navigations stay silent.
-  if (changed && Math.abs(next - 1) >= 0.001) flashZoomLabel();
+  if (flash && changed && Math.abs(next - 1) >= 0.001) flashZoomLabel();
+};
+
+// Per-tab snapshot: preview URL, back/forward stack, and zoom. The Chrome
+// side-panel splitter width is a window setting and extensions cannot set it,
+// so it is not part of this snapshot. `applyingView` blocks the write that
+// would otherwise clobber storage while a snapshot is being restored.
+let persistReady = false;
+let applyingView = false;
+let viewPersistTimer = null;
+let showToken = 0;
+
+const snapshotView = () => ({
+  url: currentUrl || '',
+  history: navHistory
+    .filter((u) => typeof u === 'string' && /^https?:\/\//i.test(u))
+    .slice(-HISTORY_LIMIT),
+  historyIndex,
+  zoom: tabZoom == null ? null : currentZoom,
+});
+
+const writeView = () => {
+  const id = boundTabId;
+  if (!id) return;
+  const snap = snapshotView();
+  const payload = { [`sp_view_${id}`]: snap };
+  if (snap.url) payload[`sp_url_${id}`] = snap.url;
+  chrome.storage.session
+    .set(payload)
+    .catch((err) => console.warn('[SideLinkPreview] view persist:', err));
+};
+
+const flushView = () => {
+  if (!persistReady || applyingView || !boundTabId) return;
+  clearTimeout(viewPersistTimer);
+  writeView();
+};
+
+const schedulePersistView = () => {
+  if (!persistReady || applyingView || !boundTabId) return;
+  clearTimeout(viewPersistTimer);
+  viewPersistTimer = setTimeout(writeView, 150);
+};
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushView();
+});
+window.addEventListener('pagehide', () => flushView());
+
+const normalizeView = (raw, fallbackUrl) => {
+  const history = Array.isArray(raw?.history)
+    ? raw.history
+        .filter((u) => typeof u === 'string' && /^https?:\/\//i.test(u))
+        .slice(-HISTORY_LIMIT)
+    : [];
+  if (
+    history.length === 0 &&
+    typeof fallbackUrl === 'string' &&
+    /^https?:\/\//i.test(fallbackUrl)
+  ) {
+    history.push(fallbackUrl);
+  }
+  let index = Number.isInteger(raw?.historyIndex)
+    ? raw.historyIndex
+    : history.length - 1;
+  if (index < 0 || index >= history.length) index = history.length - 1;
+  const zoom = Number(raw?.zoom);
+  return {
+    url: history[index] || '',
+    history,
+    historyIndex: index,
+    zoom: Number.isFinite(zoom) ? Math.min(3, Math.max(0.5, zoom)) : null,
+  };
+};
+
+const restoreTabView = (nextTabId, view) => {
+  if (!nextTabId || !view) return;
+  const sameTab = nextTabId === boundTabId;
+  const sameHist =
+    sameTab &&
+    view.historyIndex === historyIndex &&
+    view.history.length === navHistory.length &&
+    view.history.every((u, i) => u === navHistory[i]);
+  boundTabId = nextTabId;
+  if (sameHist && view.url === currentUrl) {
+    if (view.zoom != null && Math.abs(view.zoom - currentZoom) >= 0.001) {
+      setZoom(view.zoom, { persist: false, flash: false });
+    }
+    return;
+  }
+  applyingView = true;
+  try {
+    navHistory.splice(0, navHistory.length, ...view.history);
+    historyIndex = view.history.length ? view.historyIndex : -1;
+    if (view.zoom != null) tabZoom = view.zoom;
+    updateNavButtons();
+    if (!view.url) {
+      currentUrl = '';
+      addr.value = '';
+      updateAddrTitle();
+      updateRefreshButton();
+      updateOpenInMainButton();
+      frame.src = 'about:blank';
+      frame.style.display = 'none';
+      empty.classList.remove('hidden');
+      return;
+    }
+    if (view.url !== currentUrl) {
+      load(view.url, { fromHistory: true });
+    } else {
+      addr.value = view.url;
+      updateAddrTitle();
+      applyZoomForUrl(view.url, { flash: false });
+    }
+  } finally {
+    applyingView = false;
+  }
+};
+
+const showStoredTab = async (nextTabId) => {
+  if (!nextTabId) return;
+  const token = ++showToken;
+  let data = {};
+  try {
+    data = await chrome.storage.session.get([
+      `sp_view_${nextTabId}`,
+      `sp_url_${nextTabId}`,
+    ]);
+  } catch (_) {
+    return;
+  }
+  if (token !== showToken) return;
+  restoreTabView(
+    nextTabId,
+    normalizeView(data[`sp_view_${nextTabId}`], data[`sp_url_${nextTabId}`]),
+  );
 };
 
 const load = (url, { isRetry = false, fromHistory = false } = {}) => {
@@ -582,7 +724,7 @@ const load = (url, { isRetry = false, fromHistory = false } = {}) => {
   frame.style.display = '';
   // Restore the user's saved per-site zoom for this host before painting,
   // so a previously zoomed page comes back at the same level on revisit.
-  applyZoomForUrl(url);
+  applyZoomForUrl(url, { flash: !applyingView });
   showLoader();
   // On retry the URL is identical, so a plain `frame.src = url` would be a
   // no-op. Bounce through about:blank to force a real fresh navigation.
@@ -595,6 +737,9 @@ const load = (url, { isRetry = false, fromHistory = false } = {}) => {
     handleLoadFailure();
   }, BLOCK_TIMEOUT_MS);
   void syncQuickScopeChrome();
+  // URL must be stored before the user can switch tabs. A debounced write
+  // loses the page they just opened.
+  if (!applyingView && persistReady) writeView();
 };
 
 // Auto-retry once before showing the blocked-page tip. Many failures clear
@@ -904,27 +1049,23 @@ quickWhitelistBtn?.addEventListener('click', async () => {
   }
 });
 
-// tabId must come from sidepanel.html?tabId=… (set by background on every
-// open). Do not guess via tabs.query — lastFocusedWindow would bind a panel
-// in window A to the active tab in window B; currentWindow still breaks when
-// the panel is pinned to another tab in the same window.
-const resolveTabId = async () => tabId;
+const resolveTabId = async () => boundTabId;
 
-const readInitialUrl = async () => {
-  const id = await resolveTabId();
-  if (!id) return;
-  const key = `sp_url_${id}`;
-  const data = await chrome.storage.session.get(key);
-  if (data[key]) load(data[key]);
+const readInitialView = async () => {
+  if (!boundTabId) return;
+  await showStoredTab(boundTabId);
+  persistReady = true;
+  schedulePersistView();
 };
 
 updateRefreshButton();
 updateOpenInMainButton();
 void syncQuickScopeChrome();
 
-readInitialUrl();
+readInitialView();
 
 chrome.storage.session.onChanged.addListener(async (changes) => {
+  if (applyingView) return;
   const id = await resolveTabId();
   if (!id) return;
   const key = `sp_url_${id}`;
@@ -1094,7 +1235,7 @@ chrome.storage.local
   .then((data) => {
     if (data && data[ZOOM_MAP_KEY] && typeof data[ZOOM_MAP_KEY] === 'object') {
       zoomMap = data[ZOOM_MAP_KEY];
-      if (currentUrl) applyZoomForUrl(currentUrl);
+      if (currentUrl && tabZoom == null) applyZoomForUrl(currentUrl);
     }
   })
   .catch((err) => console.warn('[SideLinkPreview] zoom load:', err));
@@ -1110,5 +1251,5 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const change = changes[ZOOM_MAP_KEY];
   if (!change) return;
   zoomMap = change.newValue || {};
-  if (currentUrl) applyZoomForUrl(currentUrl);
+  if (currentUrl && tabZoom == null) applyZoomForUrl(currentUrl);
 });

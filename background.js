@@ -156,13 +156,20 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+// Own the toolbar click so open({ tabId }) runs. openPanelOnActionClick
+// would open the manifest default panel, which is shared by every tab.
+const disableActionPanelToggle = () => {
   chrome.sidePanel
-    .setPanelBehavior({ openPanelOnActionClick: true })
+    .setPanelBehavior({ openPanelOnActionClick: false })
     .catch((err) => console.warn('[SideLinkPreview] setPanelBehavior:', err));
+};
+
+chrome.runtime.onInstalled.addListener(() => {
+  disableActionPanelToggle();
   ensureDnrRule();
   ensureContextMenu();
 });
+disableActionPanelToggle();
 
 // Re-register on service-worker cold start too (onInstalled does not fire every time).
 chrome.runtime.onStartup.addListener(() => {
@@ -187,39 +194,214 @@ const isSidePanelApiBlocked = (url) => {
   return false;
 };
 
+const panelPathForTab = (tabId) => `sidepanel.html?tabId=${tabId}`;
+
+// The manifest default_path is one shared panel for the whole window.
+// Leave it disabled so open({ tabId }) creates a separate instance per tab.
+// Chrome then shows that instance only while its tab is active, and brings
+// it back (with its page, history, and scroll) when the user returns.
+const disableGlobalSidePanel = () =>
+  chrome.sidePanel.setOptions({ enabled: false }).catch(() => {});
+
 /** Preconfigure tab path + enabled so open() can run synchronously on user gesture. */
 const preconfigureSidePanelTab = (tabId, url) => {
-  if (!tabId) return;
+  if (!tabId) return Promise.resolve();
   if (isSidePanelApiBlocked(url)) {
-    chrome.sidePanel.setOptions({ tabId, enabled: false }).catch(() => {});
-    return;
+    return chrome.sidePanel
+      .setOptions({ tabId, enabled: false })
+      .catch(() => {});
   }
-  chrome.sidePanel
+  return chrome.sidePanel
     .setOptions({
       tabId,
-      path: `sidepanel.html?tabId=${tabId}`,
+      path: panelPathForTab(tabId),
       enabled: true,
     })
     .catch(() => {});
 };
 
+const preconfigureOpenTabs = () => {
+  disableGlobalSidePanel()
+    .then(() => chrome.tabs.query({}))
+    .then((tabs) => {
+      for (const tab of tabs) {
+        if (tab?.id)
+          preconfigureSidePanelTab(tab.id, tab.url || tab.pendingUrl);
+      }
+    })
+    .catch(() => {});
+};
+
+preconfigureOpenTabs();
+
 const panelReadyKey = (tabId) => `sp_ready_${tabId}`;
 const scopeBypassKey = (tabId) => `sp_scope_bypass_${tabId}`;
+const panelOpenKey = (tabId) => `sp_open_${tabId}`;
+const panelViewKey = (tabId) => `sp_view_${tabId}`;
 
 /** In-flight explicit opens (context menu / shortcut) — guards against tab-event races. */
 const explicitOpenPending = new Set();
 
+/** Latest tab switch. onClosed for a different tab just after this is the
+ *  previous panel being hidden, not the user dismissing it. */
+let lastActivation = { tabId: 0, at: 0 };
+
+/** Mirrors sp_open_* so the toolbar click can toggle without awaiting storage.
+ *  Rebuilt when the service worker starts. */
+const panelsOpenInMemory = new Set();
+
+const rememberOpenPanelsFromSession = () => {
+  chrome.storage.session
+    .get(null)
+    .then((all) => {
+      for (const key of Object.keys(all || {})) {
+        const m = key.match(/^sp_open_(\d+)$/);
+        if (m && all[key]) panelsOpenInMemory.add(Number(m[1]));
+      }
+    })
+    .catch(() => {});
+};
+
+rememberOpenPanelsFromSession();
+
 const markTabPanelReady = (tabId) => {
   if (!tabId) return;
-  chrome.storage.session
-    .set({ [panelReadyKey(tabId)]: true })
-    .catch(() => {});
+  chrome.storage.session.set({ [panelReadyKey(tabId)]: true }).catch(() => {});
 };
 
 /** One-shot bypass of Scope disable (whitelist / blacklist) for explicit opens. */
 const markScopeBypass = (tabId) => {
   if (!tabId) return;
   chrome.storage.session.set({ [scopeBypassKey(tabId)]: true }).catch(() => {});
+};
+
+const markPanelOpen = (tabId) => {
+  if (!tabId) return;
+  panelsOpenInMemory.add(tabId);
+  chrome.storage.session.set({ [panelOpenKey(tabId)]: true }).catch(() => {});
+};
+
+const forgetPanelOpen = (tabId) => {
+  if (!tabId) return;
+  panelsOpenInMemory.delete(tabId);
+  chrome.storage.session.remove(panelOpenKey(tabId)).catch(() => {});
+};
+
+const tabIdFromPanelPath = (path) => {
+  if (typeof path !== 'string') return null;
+  const q = path.indexOf('?');
+  if (q < 0) return null;
+  const id = Number(new URLSearchParams(path.slice(q + 1)).get('tabId'));
+  return Number.isInteger(id) && id > 0 ? id : null;
+};
+
+/** Open this tab's own panel. windowId would attach the shared global panel
+ *  and leave it up on every other tab. */
+const openTabSidePanel = (tabId) => {
+  if (!tabId) return;
+  explicitOpenPending.add(tabId);
+  markPanelOpen(tabId);
+  chrome.sidePanel
+    .open({ tabId })
+    .catch((err) => {
+      forgetPanelOpen(tabId);
+      console.warn('[SideLinkPreview] sidePanel.open:', err);
+    })
+    .finally(() => {
+      setTimeout(() => explicitOpenPending.delete(tabId), 800);
+    });
+};
+
+const notifyPanelClose = (tabId, { force = false } = {}) => {
+  chrome.runtime
+    .sendMessage({
+      type: 'SLP_REQUEST_SIDE_PANEL_CLOSE',
+      tabId: force ? undefined : tabId,
+      force: !!force,
+    })
+    .catch(() => {});
+};
+
+/** Close one tab's panel and forget that it was open. */
+const closeTabPanel = async (tabId) => {
+  if (!tabId) return;
+  forgetPanelOpen(tabId);
+  let tab = null;
+  try {
+    tab = await chrome.tabs.get(tabId);
+  } catch (_) {}
+  if (typeof chrome.sidePanel.close === 'function') {
+    try {
+      await chrome.sidePanel.close({ tabId });
+      return;
+    } catch (_) {}
+    // Only the shared global panel is open. Closing it by window is safe
+    // while this tab is the one on screen; a background tab must not dismiss
+    // the panel the user is looking at.
+    if (tab?.active && tab.windowId) {
+      try {
+        await chrome.sidePanel.close({ windowId: tab.windowId });
+        return;
+      } catch (_) {}
+    }
+  }
+  notifyPanelClose(tabId, { force: !!tab?.active });
+};
+
+/** The active tab has no panel of its own. Dismiss a leftover global panel
+ *  so another tab's preview is not left on screen. */
+const hideSharedPanel = async (tab) => {
+  if (tab?.windowId && typeof chrome.sidePanel.close === 'function') {
+    await chrome.sidePanel.close({ windowId: tab.windowId }).catch(() => {});
+    return;
+  }
+  if (!tab?.id) return;
+  await chrome.sidePanel
+    .setOptions({ tabId: tab.id, enabled: false })
+    .catch(() => {});
+};
+
+const showTabView = (tabId) => {
+  if (!tabId) return;
+  chrome.runtime
+    .sendMessage({ type: 'SLP_SHOW_TAB_VIEW', tabId })
+    .catch(() => {});
+};
+
+const syncSidePanelWithActiveTab = async (tab) => {
+  if (!tab?.id || explicitOpenPending.has(tab.id)) return;
+  const url = tab.url || tab.pendingUrl;
+  if (isSidePanelApiBlocked(url)) {
+    await chrome.sidePanel
+      .setOptions({ tabId: tab.id, enabled: false })
+      .catch(() => {});
+    await hideSharedPanel(tab);
+    return;
+  }
+  let wants = false;
+  try {
+    const data = await chrome.storage.session.get(panelOpenKey(tab.id));
+    wants = !!data[panelOpenKey(tab.id)];
+  } catch (_) {}
+  if (explicitOpenPending.has(tab.id)) return;
+  if (wants) {
+    // Tab-specific panels stay attached to their tab. Enabling the path is
+    // enough for Chrome to show this tab's instance again, including its
+    // page, history, and scroll. Do not call open() here — that needs a user
+    // gesture and would reload the panel.
+    await preconfigureSidePanelTab(tab.id, url);
+    showTabView(tab.id);
+    return;
+  }
+  // Invalidate the shared global view first, then hide it. Re-enable this
+  // tab afterwards so the next click, shortcut, or toolbar press can open().
+  await disableGlobalSidePanel();
+  await chrome.sidePanel
+    .setOptions({ tabId: tab.id, enabled: false })
+    .catch(() => {});
+  await hideSharedPanel(tab);
+  await preconfigureSidePanelTab(tab.id, url);
+  await disableGlobalSidePanel();
 };
 
 // Push a concrete URL into the current tab's Side Panel. Mirrors the open
@@ -236,19 +418,10 @@ const openUrlInSidePanel = (url, tab) => {
     return;
   }
   const tabId = tab.id;
-  const windowId = tab.windowId;
-  explicitOpenPending.add(tabId);
 
   // open() must be the first Side Panel API call in the gesture stack.
   // setOptions is preconfigured on tab events and on contextmenu (content.js).
-  chrome.sidePanel
-    .open({ tabId, windowId })
-    .catch((err) =>
-      console.warn('[SideLinkPreview] openUrlInSidePanel:', err),
-    )
-    .finally(() => {
-      setTimeout(() => explicitOpenPending.delete(tabId), 800);
-    });
+  openTabSidePanel(tabId);
 
   chrome.storage.session
     .set({
@@ -296,11 +469,9 @@ chrome.commands?.onCommand.addListener(async (command) => {
   }
 });
 
-// ---------- action.onClicked fallback ----------
-// setPanelBehavior({ openPanelOnActionClick: true }) occasionally fails on
-// older Chrome versions, under enterprise policy, or when the toolbar icon is
-// hidden. Add an explicit onClicked handler to force-open the Side Panel when
-// the toolbar icon is clicked.
+// ---------- action.onClicked ----------
+// Toolbar click toggles this tab's own panel. The default manifest panel is
+// disabled so the click cannot fall through to a window-wide panel.
 chrome.action?.onClicked.addListener((tab) => {
   if (!tab?.id || !tab?.windowId) return;
   // Side-panel iframe cannot embed chrome://, chrome-extension://,
@@ -311,22 +482,18 @@ chrome.action?.onClicked.addListener((tab) => {
   // happened to click the toolbar icon while parked on a system page.
   const url = tab.url || tab.pendingUrl;
   if (isSystemUrl(url) || isSensitivePreviewUrl(url)) return;
+  if (panelsOpenInMemory.has(tab.id)) {
+    closeTabPanel(tab.id);
+    return;
+  }
   try {
-    explicitOpenPending.add(tab.id);
     if (isHttpUrl(url)) {
-      chrome.storage.session
-        .set({ [`sp_url_${tab.id}`]: url })
-        .catch(() => {});
+      chrome.storage.session.set({ [`sp_url_${tab.id}`]: url }).catch(() => {});
     }
     markTabPanelReady(tab.id);
     markScopeBypass(tab.id);
+    openTabSidePanel(tab.id);
     preconfigureSidePanelTab(tab.id, url);
-    chrome.sidePanel
-      .open({ tabId: tab.id, windowId: tab.windowId })
-      .catch((err) => console.warn('[SideLinkPreview] action.onClicked open:', err))
-      .finally(() => {
-        setTimeout(() => explicitOpenPending.delete(tab.id), 800);
-      });
   } catch (err) {
     console.warn('[SideLinkPreview] action.onClicked:', err);
   }
@@ -350,9 +517,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (isHttpUrl(msg.url)) {
       chrome.tabs
         .create({ url: msg.url, active: true })
-        .catch((err) =>
-          console.warn('[SideLinkPreview] tabs.create:', err),
-        );
+        .catch((err) => console.warn('[SideLinkPreview] tabs.create:', err));
     }
     sendResponse({ ok: true });
     return;
@@ -395,7 +560,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     chrome.tabs
       .update(tabId, { url, active: true })
       .then(() => {
-        requestSidePanelClose(tabId);
+        closeTabPanel(tabId);
         sendResponse({ ok: true });
       })
       .catch((err) => {
@@ -408,9 +573,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'PREPARE_SIDE_PANEL') {
     const tabId = sender.tab?.id;
     const url = sender.tab?.url || sender.tab?.pendingUrl;
-    if (tabId) preconfigureSidePanelTab(tabId, url);
-    sendResponse({ ok: true });
-    return;
+    if (!tabId) {
+      sendResponse({ ok: true });
+      return;
+    }
+    preconfigureSidePanelTab(tabId, url).then(() => sendResponse({ ok: true }));
+    return true;
   }
 
   if (msg?.type !== 'OPEN_IN_SIDE_PANEL') return;
@@ -455,32 +623,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   markTabPanelReady(tabId);
-  explicitOpenPending.add(tabId);
-
-  chrome.sidePanel
-    .open({ tabId, windowId })
-    .then(() => sendResponse({ ok: true }))
-    .catch((err) => {
-      console.warn('[SideLinkPreview] open failed:', err);
-      sendResponse({ ok: false, reason: String(err) });
-    })
-    .finally(() => {
-      setTimeout(() => explicitOpenPending.delete(tabId), 800);
-    });
+  openTabSidePanel(tabId);
+  sendResponse({ ok: true });
 
   chrome.storage.session
     .set({ [`sp_url_${tabId}`]: msg.url })
     .catch((err) => console.warn('[SideLinkPreview] storage.set:', err));
 
   preconfigureSidePanelTab(tabId, sender.tab?.url || msg.url);
-
-  return true;
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   explicitOpenPending.delete(tabId);
   chrome.storage.session
-    .remove([`sp_url_${tabId}`, panelReadyKey(tabId), scopeBypassKey(tabId)])
+    .remove([
+      `sp_url_${tabId}`,
+      panelReadyKey(tabId),
+      scopeBypassKey(tabId),
+      panelOpenKey(tabId),
+      panelViewKey(tabId),
+    ])
     .catch(() => {});
 });
 
@@ -529,17 +691,9 @@ const clearPreviewSession = (tabId) => {
       `sp_url_${tabId}`,
       panelReadyKey(tabId),
       scopeBypassKey(tabId),
+      panelOpenKey(tabId),
+      panelViewKey(tabId),
     ])
-    .catch(() => {});
-};
-
-const requestSidePanelClose = (tabId, { force = false } = {}) => {
-  chrome.runtime
-    .sendMessage({
-      type: 'SLP_REQUEST_SIDE_PANEL_CLOSE',
-      tabId: force ? undefined : tabId,
-      force: !!force,
-    })
     .catch(() => {});
 };
 
@@ -548,7 +702,7 @@ const initSidePanelForNewTab = (tab) => {
   if (!tab?.id) return;
   clearPreviewSession(tab.id);
   preconfigureSidePanelTab(tab.id, tab.url || tab.pendingUrl);
-  if (tab.active) requestSidePanelClose(tab.id, { force: true });
+  if (tab.active) hideSharedPanel(tab);
 };
 
 /** Close panel when the session preview URL matches Scope disable rules. */
@@ -564,14 +718,14 @@ const closePanelIfPreviewScopeDisabled = async (tabId) => {
     const settings = await getSettings();
     if (!isUrlDisabledByScope(previewUrl, settings)) return;
     clearPreviewSession(tabId);
-    requestSidePanelClose(tabId);
+    await closeTabPanel(tabId);
   } catch (_) {}
 };
 
 const refreshSidePanelForTab = async (
   tabId,
   url,
-  { fromNavigation = false } = {},
+  { fromNavigation = false, configure = true } = {},
 ) => {
   if (!tabId) return;
   if (explicitOpenPending.has(tabId)) return;
@@ -586,7 +740,7 @@ const refreshSidePanelForTab = async (
     } catch (_) {}
   }
 
-  preconfigureSidePanelTab(tabId, url);
+  if (configure) await preconfigureSidePanelTab(tabId, url);
 
   let scopeDisabled = false;
   if (!scopeBypass && !isSidePanelApiBlocked(url)) {
@@ -594,13 +748,11 @@ const refreshSidePanelForTab = async (
     scopeDisabled = isUrlDisabledByScope(url, settings);
   }
 
-  // Chrome has no sidePanel.close(). Ask the matching panel instance to
-  // window.close() when:
-  //   • the tab navigated (left page moved on — stale preview), or
-  //   • Scope disables automatic preview on this host (unless bypassed).
+  // Drop this tab's preview when the left page navigates, or when Scope
+  // disables automatic preview on this host (unless bypassed).
   if (fromNavigation || scopeDisabled) {
     clearPreviewSession(tabId);
-    requestSidePanelClose(tabId);
+    await closeTabPanel(tabId);
   }
 };
 
@@ -609,17 +761,15 @@ chrome.tabs.onCreated.addListener((tab) => {
 });
 
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  lastActivation = { tabId, at: Date.now() };
   if (explicitOpenPending.has(tabId)) return;
   try {
     const tab = await chrome.tabs.get(tabId);
-    await refreshSidePanelForTab(tabId, tab.url || tab.pendingUrl);
+    await refreshSidePanelForTab(tabId, tab.url || tab.pendingUrl, {
+      configure: false,
+    });
     if (explicitOpenPending.has(tabId)) return;
-    const session = await chrome.storage.session.get([
-      `sp_url_${tabId}`,
-      scopeBypassKey(tabId),
-    ]);
-    if (session[`sp_url_${tabId}`] || session[scopeBypassKey(tabId)]) return;
-    requestSidePanelClose(tabId, { force: true });
+    await syncSidePanelWithActiveTab(tab);
   } catch (_) {}
 });
 
@@ -664,7 +814,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       if (t?.id) tabIds.add(t.id);
     }
     for (const key of Object.keys(sessionAll || {})) {
-      const m = key.match(/^sp_(?:ready|url)_(\d+)$/);
+      const m = key.match(/^sp_(?:ready|url|open)_(\d+)$/);
       if (m) tabIds.add(Number(m[1]));
     }
 
@@ -707,3 +857,29 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
   refreshTabsAfterScopeChange().catch(() => {});
 });
+
+if (chrome.sidePanel.onOpened) {
+  chrome.sidePanel.onOpened.addListener((info) => {
+    const id = info?.tabId || tabIdFromPanelPath(info?.path);
+    if (id) markPanelOpen(id);
+  });
+}
+
+if (chrome.sidePanel.onClosed) {
+  chrome.sidePanel.onClosed.addListener(async (info) => {
+    const id = info?.tabId || tabIdFromPanelPath(info?.path);
+    if (!id || explicitOpenPending.has(id)) return;
+    // Switching tabs hides the previous panel. That is not a dismiss —
+    // keep the flag so the panel comes back with that tab.
+    if (id !== lastActivation.tabId && Date.now() - lastActivation.at < 1000) {
+      return;
+    }
+    try {
+      const tab = await chrome.tabs.get(id);
+      if (!tab.active) return;
+    } catch (_) {
+      return;
+    }
+    forgetPanelOpen(id);
+  });
+}

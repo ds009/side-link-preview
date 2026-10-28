@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.4.0] — 2026-10-28
+
+### Added
+
+- **Per-tab Side Panel** — each tab keeps its own open/closed state, preview URL, back/forward history, and zoom. Switching tabs shows that tab’s panel, or closes it when the tab has none. The Chrome splitter width stays per window (extensions cannot set it).
+
+### Changed
+
+- Toolbar click toggles the current tab’s panel instead of opening one shared panel for the whole window.
+- Zoom set in the Side Panel stays on that tab. A host’s saved zoom is only the starting level for a tab that has not set its own.
+
+---
+
 ## [1.3.0] — 2026-08-28
 
 ### Changed

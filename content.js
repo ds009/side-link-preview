@@ -266,6 +266,19 @@
       },
       true,
     );
+    // pointerdown lands before the click that calls sidePanel.open().
+    // Register this tab's own panel path first so the open is not a shared
+    // window-level panel.
+    document.addEventListener(
+      'pointerdown',
+      (e) => {
+        const el = e.target;
+        if (!el || typeof el.closest !== 'function') return;
+        if (!el.closest('a')) return;
+        safeSendMessage({ type: 'PREPARE_SIDE_PANEL' });
+      },
+      true,
+    );
   };
 
   const attachSyncListener = () => {
